@@ -5,5 +5,23 @@
 cmake_minimum_required(VERSION 3.1)
 project(foonathan_tiny)
 
+set(detail_header_files
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/detail/assert.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/detail/ilog2.hpp
+    )
+set(header_files
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/bit_view.hpp
+    )
+add_library(foonathan_tiny INTERFACE)
+target_sources(foonathan_tiny INTERFACE ${detail_header_files} ${header_files})
+target_include_directories(foonathan_tiny INTERFACE include ../debug_assert/)
+
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    enable_testing()
+    add_subdirectory(test)
+endif()
+
+# temporary, for testing
 add_executable(foonathan_tiny_main main.cpp)
+target_link_libraries(foonathan_tiny_main PUBLIC foonathan_tiny)
 set_target_properties(foonathan_tiny_main PROPERTIES CXX_STANDARD 11)

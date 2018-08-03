@@ -107,24 +107,29 @@ namespace foonathan
             /// \returns An integer containing the viewed bits in the `size()` lower bits.
             std::uintmax_t extract() const noexcept
             {
-                return (*pointer_ & mask()) >> Begin;
+                return static_cast<std::uintmax_t>(*pointer_ & mask()) >> Begin;
             }
 
             /// \effects Sets the viewed bits to the `size()` lower bits of `bits`.
             void put(std::uintmax_t bits) const noexcept
             {
                 // clear the existing bits
-                *pointer_ &= ~mask();
+                *pointer_ = *pointer_ & comp_mask();
                 // set the new ones
-                *pointer_ |= static_cast<unsigned_integer>((bits << Begin) & mask());
+                *pointer_ = *pointer_ | static_cast<unsigned_integer>((bits << Begin) & mask());
             }
 
         private:
-            static constexpr Integer mask() noexcept
+            static constexpr unsigned_integer mask() noexcept
             {
                 return size() == sizeof(Integer) * CHAR_BIT ?
                            Integer(-1) :
                            ((Integer(1) << size()) - Integer(1)) << Begin;
+            }
+
+            static constexpr unsigned_integer comp_mask() noexcept
+            {
+                return static_cast<unsigned_integer>(~mask());
             }
 
             unsigned_integer* pointer_;

@@ -8,9 +8,12 @@ project(foonathan_tiny)
 set(detail_header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/detail/assert.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/detail/ilog2.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/detail/select_integer.hpp
     )
 set(header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/bit_view.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/spare_bits.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_pair.hpp
     )
 add_library(foonathan_tiny INTERFACE)
 target_sources(foonathan_tiny INTERFACE ${detail_header_files} ${header_files})

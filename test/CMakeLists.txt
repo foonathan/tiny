@@ -19,7 +19,8 @@ if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/catch.hpp)
 endif()
 
 set(tests
-        bit_view.cpp)
+        bit_view.cpp
+        spare_bits_traits.cpp)
 
 add_executable(foonathan_tiny_test
                test.cpp

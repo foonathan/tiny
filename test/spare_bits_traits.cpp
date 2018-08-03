@@ -96,3 +96,35 @@ TEST_CASE("spare_bits_traits pointer")
         verify_pointer<std::uint64_t>(8, 3);
     }
 }
+
+namespace
+{
+    template <typename T>
+    void verify_pair(std::size_t spare)
+    {
+        using pair = tiny_bool_pair<T*>;
+        REQUIRE(spare_bits<pair>() == spare);
+
+        verify_spare_bits(pair(nullptr, false));
+
+        T obj;
+        verify_spare_bits(pair(&obj, true));
+    }
+} // namespace
+
+TEST_CASE("spare_bits_traits tiny_bool_pair")
+{
+    SECTION("spare_bits<T>() == 1u")
+    {
+        verify_pair<std::uint16_t>(0u);
+    }
+    SECTION("spare_bits<T>() > 1u")
+    {
+        verify_pair<std::uint64_t>(2u);
+    }
+    SECTION("spare_bits<T>() == 0u")
+    {
+        // now the pair uses the spare bits of the integer necessary to store the bool
+        verify_pair<std::uint8_t>(7u);
+    }
+}

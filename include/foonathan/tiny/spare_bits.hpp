@@ -22,10 +22,13 @@ namespace foonathan
 
             /// \effects Puts the object into a valid state by clearing all spare bits, if necessary.
             ///
-            /// Member functions are only invoked when the object is in this state.
-            /// The only exception is the copy/move constructor/assignment:
-            /// they can be called on a `*this` containing arbitrary values for the spare bits.
-            /// But the `rhs` will be in a cleared state.
+            /// An object is only exposed "to the public" if it is in this state.
+            /// The only exception is the copy/move constructor:
+            /// The other object may not be in a cleared state,
+            /// but the new object should be.
+            /// \notes A type may have multiple clear states, then this function just picks one.
+            /// A type may have no clear state — it doesn't matter what the bits are, everything works,
+            /// then this function does nothing.
             static void clear(T& obj) noexcept
             {
                 (void)obj;
@@ -200,6 +203,9 @@ namespace foonathan
 
                 modifier(const modifier&) = delete;
                 modifier& operator=(const modifier&) = delete;
+
+                modifier(modifier&&) = default;
+                modifier& operator=(modifier&&) = delete;
 
                 ~modifier() noexcept
                 {

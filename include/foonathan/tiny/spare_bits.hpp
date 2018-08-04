@@ -26,9 +26,11 @@ namespace foonathan
             /// The only exception is the copy/move constructor:
             /// The other object may not be in a cleared state,
             /// but the new object should be.
+            ///
             /// \notes A type may have multiple clear states, then this function just picks one.
-            /// A type may have no clear state — it doesn't matter what the bits are, everything works,
+            /// A type may have only clear states — it doesn't matter what the bits are, everything works,
             /// then this function does nothing.
+            /// \notes The state where all the spare bits are zero must always be a valid clear state.
             static void clear(T& obj) noexcept
             {
                 (void)obj;

@@ -21,6 +21,7 @@ endif()
 set(tests
         bit_view.cpp
         spare_bits_traits.cpp
+        tombstone_traits.cpp
         tiny_pair.cpp)
 
 add_executable(foonathan_tiny_test

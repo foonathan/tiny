@@ -12,6 +12,7 @@ set(detail_header_files
     )
 set(header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/bit_view.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/optional_impl.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/spare_bits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tombstone.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_pair.hpp

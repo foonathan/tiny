@@ -20,6 +20,7 @@ endif()
 
 set(tests
         bit_view.cpp
+        optional_impl.cpp
         spare_bits_traits.cpp
         tombstone_traits.cpp
         tiny_pair.cpp)

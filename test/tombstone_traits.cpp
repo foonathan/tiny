@@ -6,6 +6,8 @@
 
 #include <catch.hpp>
 
+#include <foonathan/tiny/optional_impl.hpp>
+
 using namespace foonathan::tiny;
 
 namespace
@@ -59,5 +61,37 @@ TEST_CASE("tombstone_traits spare bits")
         std::uint16_t obj;
         verify_object(&obj);
         verify_object(static_cast<std::uint16_t*>(nullptr));
+    }
+}
+
+TEST_CASE("tombstone_traits optional_impl")
+{
+    SECTION("not compressed")
+    {
+        verify_tombstones<optional_impl<std::string>>(tombstone_count<bool>());
+
+        optional_impl<std::string> opt;
+        verify_object(opt);
+
+        opt.create_value("hello world!");
+        verify_object(opt);
+
+        opt.destroy_value();
+    }
+    SECTION("compressed")
+    {
+        verify_tombstones<optional_impl<bool>>(tombstone_count<bool>() - 1);
+
+        optional_impl<bool> opt;
+        verify_object(opt);
+
+        opt.create_value(true);
+        verify_object(opt);
+
+        opt.destroy_value();
+        opt.create_value(false);
+        verify_object(opt);
+
+        opt.destroy_value();
     }
 }

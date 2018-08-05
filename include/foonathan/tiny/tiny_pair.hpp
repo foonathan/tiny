@@ -179,7 +179,13 @@ namespace foonathan
             using is_compressed = typename storage::is_compressed;
 
             /// \effects Creates a pair of the two values.
-            explicit tiny_pair_impl(Big big, integer_type i) : storage_(std::move(big))
+            /// \gropu ctor
+            explicit tiny_pair_impl(const Big& big, integer_type i) : storage_(big)
+            {
+                storage_.set_integer(i);
+            }
+            /// \gropu ctor
+            explicit tiny_pair_impl(Big&& big, integer_type i) : storage_(std::move(big))
             {
                 storage_.set_integer(i);
             }

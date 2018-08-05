@@ -19,6 +19,11 @@ namespace foonathan
         template <typename T>
         struct tombstone_traits_default
         {
+            /// Whether or not the tombstones overlap with the spare bits.
+            ///
+            /// If this is `true`, an object where the spare bits are used is falsely identified as a tombstone.
+            using overlaps_spare_bits = std::false_type;
+
             /// The number of tombstones in the type.
             static constexpr std::size_t tombstone_count = 0u;
 
@@ -26,6 +31,7 @@ namespace foonathan
             /// \effects Creates an object of some type with the same size and alignment as `T` at the given memory address,
             /// where the bit pattern uniquely identifies the given tombstone.
             /// \requires `tombstone_index < tombstone_count` and `memory` points to empty memory suitable for a `T`.
+            /// \notes Tombstones must be trivial types.
             static void create_tombstone(void* memory, std::size_t tombstone_index) noexcept
             {
                 (void)memory;
@@ -52,6 +58,8 @@ namespace foonathan
             static_assert(std::is_default_constructible<T>::value,
                           "type must be default constructible");
             static_assert(spare_bits<T>() > 0u, "not enough spare bits");
+
+            using overlaps_spare_bits = std::true_type;
 
             // 2^spare_bits - 1 tombstones are available (all 0 is used for the real object)
             static constexpr std::size_t tombstone_count = (1u << spare_bits<T>()) - 1u;
@@ -88,6 +96,12 @@ namespace foonathan
         };
 
         //=== tombstone traits algorithm ===//
+        /// Whether or not the tombstones overlap with the spare bits.
+        ///
+        /// If this is `true`, an object where the spare bits are used is falsely identified as a tombstone.
+        template <typename T>
+        using tombstone_overlaps_spare_bits = typename tombstone_traits<T>::overlaps_spare_bits;
+
         /// \returns The number of tombstones in the given type.
         template <typename T>
         constexpr std::size_t tombstone_count() noexcept

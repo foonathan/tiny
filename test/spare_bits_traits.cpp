@@ -99,6 +99,46 @@ TEST_CASE("spare_bits_traits pointer")
 
 namespace
 {
+    struct member_test_type
+    {
+        int  i;
+        bool b1;
+        bool b2;
+
+        friend bool operator==(member_test_type lhs, member_test_type rhs)
+        {
+            return lhs.i == rhs.i && lhs.b1 == rhs.b1 && lhs.b2 == rhs.b2;
+        }
+    };
+} // namespace
+
+namespace foonathan
+{
+    namespace tiny
+    {
+        template <>
+        struct spare_bits_traits<member_test_type>
+        : spare_bits_traits_member<member_test_type, FOONATHAN_TINY_MEMBER(&member_test_type::b1),
+                                   FOONATHAN_TINY_MEMBER(&member_test_type::b2)>
+        {
+        };
+    } // namespace tiny
+} // namespace foonathan
+
+TEST_CASE("spare_bits_traits member")
+{
+    REQUIRE(spare_bits<member_test_type>() == 2 * spare_bits<bool>());
+
+    member_test_type obj{42, true, true};
+    verify_spare_bits(obj);
+    obj.b1 = false;
+    verify_spare_bits(obj);
+    obj.b2 = false;
+    verify_spare_bits(obj);
+}
+
+namespace
+{
     template <typename T>
     void verify_pair(std::size_t spare)
     {

@@ -263,6 +263,70 @@ namespace foonathan
         {
             spare_bits_traits<T>::clear(obj);
         }
+
+        //=== spare bits traits member ===//
+        /// Tag type to mark a member pointer.
+        template <typename MemberPtrType, MemberPtrType Member>
+        struct member_ptr_t
+        {
+        };
+
+/// Creates a [tiny::member_ptr_t]() to the given type.
+/// \notes This is just a workaround for C++17 `auto` as non-type template parameters.
+#define FOONATHAN_TINY_MEMBER(MemberPtr) member_ptr_t<decltype(MemberPtr), MemberPtr>
+
+        namespace detail
+        {
+            template <typename T, typename... Members>
+            struct spare_bits_traits_member;
+
+            template <typename T>
+            struct spare_bits_traits_member<T> : spare_bits_traits_default<T>
+            {
+            };
+
+            template <typename T, typename MemberT, MemberT T::*Member, typename... OtherMembers>
+            struct spare_bits_traits_member<T, member_ptr_t<MemberT T::*, Member>, OtherMembers...>
+            {
+                using tail = spare_bits_traits_member<T, OtherMembers...>;
+
+                static constexpr std::size_t spare_bits =
+                    tiny::spare_bits<MemberT>() + tail::spare_bits;
+
+                static void clear(T& obj) noexcept
+                {
+                    clear_spare_bits(obj.*Member);
+                    tail::clear(obj);
+                }
+
+                static std::uintmax_t extract(const T& obj) noexcept
+                {
+                    auto my_bits    = extract_spare_bits(obj.*Member);
+                    auto other_bits = tail::extract(obj) << tiny::spare_bits<MemberT>();
+                    // the lower-most bits of other_bits are free, so put mine in there
+                    return other_bits | my_bits;
+                }
+
+                static void put(T& obj, std::uintmax_t spare_bits) noexcept
+                {
+                    // put my bits in my member
+                    auto my_bits =
+                        bit_view<std::uintmax_t, 0, tiny::spare_bits<MemberT>()>(spare_bits)
+                            .extract();
+                    put_spare_bits(obj.*Member, my_bits);
+
+                    // put other bits in remaning members
+                    tail::put(obj, spare_bits >> tiny::spare_bits<MemberT>());
+                }
+            };
+        } // namespace detail
+
+        /// A spare bits traits implementation that forwards to the given members.
+        /// \requires Every member must be the [tiny::member_ptr_t]() tag where the class type matches `T`.
+        template <class T, typename... Members>
+        struct spare_bits_traits_member : detail::spare_bits_traits_member<T, Members...>
+        {
+        };
     } // namespace tiny
 } // namespace foonathan
 

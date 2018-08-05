@@ -19,6 +19,7 @@ if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/catch.hpp)
 endif()
 
 set(tests
+        aligned_ptr.cpp
         bit_view.cpp
         optional_impl.cpp
         spare_bits_traits.cpp

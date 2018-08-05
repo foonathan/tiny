@@ -6,8 +6,8 @@
 
 #include <catch.hpp>
 
+#include <foonathan/tiny/aligned_ptr.hpp>
 #include <foonathan/tiny/tiny_pair.hpp>
-// use tiny_pair_impl for testing
 
 using namespace foonathan::tiny;
 
@@ -167,4 +167,13 @@ TEST_CASE("spare_bits_traits tiny_bool_pair")
         // now the pair uses the spare bits of the integer necessary to store the bool
         verify_pair<std::uint8_t>(7u);
     }
+}
+
+TEST_CASE("spare_bits_traits aligned_ptr")
+{
+    REQUIRE(spare_bits<aligned_ptr<void*, 8>>() == 3u);
+    verify_spare_bits(aligned_ptr<void*, 8>(nullptr));
+
+    alignas(8) int obj;
+    verify_spare_bits(aligned_ptr<void*, 8>(&obj));
 }

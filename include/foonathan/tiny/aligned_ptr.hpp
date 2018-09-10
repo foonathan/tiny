@@ -11,28 +11,28 @@ namespace foonathan
 {
     namespace tiny
     {
-        /// A pointer type that promises a certain alignment.
+        /// A pointer to `T` that promises a certain alignment.
         ///
         /// This alignment information is then used for the [tiny::spare_bits_traits]().
         /// This is especially useful for a `void*` which does not have any alignment information.
-        template <typename Pointer, std::size_t Alignment>
-        class aligned_ptr
+        ///
+        /// \notes Don't bother using this class directly, use the nicer alias [tiny::aligned_ptr]() instead.
+        template <typename T, std::size_t Alignment>
+        class basic_aligned_ptr
         {
-            static_assert(std::is_pointer<Pointer>::value, "not a pointer type");
-
         public:
-            using element_type = typename std::remove_pointer<Pointer>::type;
+            using element_type = T;
 
             //=== constructors ===//
             /// \effects Initializes the pointer to `nullptr`.
             /// \group nullptr
-            aligned_ptr(std::nullptr_t) : pointer_(nullptr) {}
+            basic_aligned_ptr(std::nullptr_t) : pointer_(nullptr) {}
             /// \group nullptr
-            aligned_ptr() : pointer_(nullptr) {}
+            basic_aligned_ptr() : pointer_(nullptr) {}
 
             /// \effects Initializes the pointer to the given value.
             /// \requires The pointer is aligned to the promised alignment.
-            explicit aligned_ptr(Pointer p) noexcept : pointer_(p)
+            explicit basic_aligned_ptr(T* p) noexcept : pointer_(p)
             {
                 verify_alignment();
             }
@@ -47,8 +47,8 @@ namespace foonathan
             /// \effects Dereferences the pointer.
             /// \requires The pointer must not be `nullptr`.
             /// \group deref
-            template <typename T = element_type>
-            T& operator*() const noexcept
+            template <typename U = element_type>
+            U& operator*() const noexcept
             {
                 DEBUG_ASSERT(pointer_, detail::precondition_handler{});
                 return *pointer_;
@@ -62,7 +62,7 @@ namespace foonathan
 
             //=== access ===//
             /// \returns The pointer.
-            Pointer get() const noexcept
+            T* get() const noexcept
             {
                 return pointer_;
             }
@@ -74,8 +74,8 @@ namespace foonathan
             }
 
         private:
-            explicit aligned_ptr(std::uintptr_t integer)
-            : pointer_(reinterpret_cast<Pointer>(integer))
+            explicit basic_aligned_ptr(std::uintptr_t integer)
+            : pointer_(reinterpret_cast<T*>(integer))
             {
             }
 
@@ -86,85 +86,151 @@ namespace foonathan
                              "pointer not aligned as promised");
             }
 
-            Pointer pointer_;
+            T* pointer_;
 
-            friend struct spare_bits_traits<aligned_ptr<Pointer, Alignment>>;
+            friend struct spare_bits_traits<basic_aligned_ptr<T, Alignment>>;
         };
 
         /// \returns Whether or not the two pointers are (not) equal.
         /// \group comparison Comparison
-        template <typename Pointer, std::size_t Alignment, typename Pointer2,
-                  std::size_t Alignment2, typename = decltype(Pointer() == Pointer2())>
-        bool operator==(aligned_ptr<Pointer, Alignment>   lhs,
-                        aligned_ptr<Pointer2, Alignment2> rhs) noexcept
+        template <typename T, std::size_t Alignment, typename U, std::size_t Alignment2,
+                  typename = decltype(static_cast<T*>(nullptr) == static_cast<U*>(nullptr))>
+        bool operator==(basic_aligned_ptr<T, Alignment>  lhs,
+                        basic_aligned_ptr<U, Alignment2> rhs) noexcept
         {
             return lhs.get() == rhs.get();
         }
         /// \group comparison
-        template <typename Pointer, std::size_t Alignment, typename Pointer2,
-                  typename = decltype(Pointer() == Pointer2())>
-        bool operator==(aligned_ptr<Pointer, Alignment> lhs, Pointer2 rhs) noexcept
+        template <typename T, std::size_t Alignment, typename U,
+                  typename = decltype(static_cast<T*>(nullptr) == static_cast<U*>(nullptr))>
+        bool operator==(basic_aligned_ptr<T, Alignment> lhs, U* rhs) noexcept
         {
             return lhs.get() == rhs;
         }
         /// \group comparison
-        template <typename Pointer, typename Pointer2, std::size_t Alignment2,
-                  typename = decltype(Pointer() == Pointer2())>
-        bool operator==(Pointer lhs, aligned_ptr<Pointer2, Alignment2> rhs) noexcept
+        template <typename T, typename U, std::size_t Alignment,
+                  typename = decltype(static_cast<T*>(nullptr) == static_cast<U*>(nullptr))>
+        bool operator==(T* lhs, basic_aligned_ptr<U, Alignment> rhs) noexcept
         {
             return lhs == rhs.get();
         }
+        /// \group comparison
+        template <typename T, std::size_t Alignment>
+        bool operator==(basic_aligned_ptr<T, Alignment> lhs, std::nullptr_t) noexcept
+        {
+            return lhs.get() == nullptr;
+        }
+        /// \group comparison
+        template <typename U, std::size_t Alignment>
+        bool operator==(std::nullptr_t, basic_aligned_ptr<U, Alignment> rhs) noexcept
+        {
+            return nullptr == rhs.get();
+        }
 
         /// \group comparison
-        template <typename Pointer, std::size_t Alignment, typename Pointer2,
-                  std::size_t Alignment2, typename = decltype(Pointer() == Pointer2())>
-        bool operator!=(aligned_ptr<Pointer, Alignment>   lhs,
-                        aligned_ptr<Pointer2, Alignment2> rhs) noexcept
+        template <typename T, std::size_t Alignment, typename U, std::size_t Alignment2,
+                  typename = decltype(static_cast<T*>(nullptr) == static_cast<U*>(nullptr))>
+        bool operator!=(basic_aligned_ptr<T, Alignment>  lhs,
+                        basic_aligned_ptr<U, Alignment2> rhs) noexcept
         {
             return !(lhs == rhs);
         }
         /// \group comparison
-        template <typename Pointer, std::size_t Alignment, typename Pointer2,
-                  typename = decltype(Pointer() == Pointer2())>
-        bool operator!=(aligned_ptr<Pointer, Alignment> lhs, Pointer2 rhs) noexcept
+        template <typename T, std::size_t Alignment, typename U,
+                  typename = decltype(static_cast<T*>(nullptr) == static_cast<U*>(nullptr))>
+        bool operator!=(basic_aligned_ptr<T, Alignment> lhs, U* rhs) noexcept
         {
             return !(lhs == rhs);
         }
         /// \group comparison
-        template <typename Pointer, typename Pointer2, std::size_t Alignment2,
-                  typename = decltype(Pointer() == Pointer2())>
-        bool operator!=(Pointer lhs, aligned_ptr<Pointer2, Alignment2> rhs) noexcept
+        template <typename T, typename U, std::size_t Alignment,
+                  typename = decltype(static_cast<T*>(nullptr) == static_cast<U*>(nullptr))>
+        bool operator!=(T* lhs, basic_aligned_ptr<U, Alignment> rhs) noexcept
         {
             return !(lhs == rhs);
+        }
+        /// \group comparison
+        template <typename T, std::size_t Alignment>
+        bool operator!=(basic_aligned_ptr<T, Alignment> lhs, std::nullptr_t) noexcept
+        {
+            return lhs.get() != nullptr;
+        }
+        /// \group comparison
+        template <typename U, std::size_t Alignment>
+        bool operator!=(std::nullptr_t, basic_aligned_ptr<U, Alignment> rhs) noexcept
+        {
+            return nullptr != rhs.get();
         }
 
         /// Exposes the new spare bits of the aligned pointer.
-        template <typename Pointer, std::size_t Alignment>
-        struct spare_bits_traits<aligned_ptr<Pointer, Alignment>>
+        template <typename T, std::size_t Alignment>
+        struct spare_bits_traits<basic_aligned_ptr<T, Alignment>>
         {
+        private:
             using spare_bits_view = bit_view<std::uintptr_t, 0, detail::ilog2_ceil(Alignment)>;
 
         public:
             static constexpr auto spare_bits = spare_bits_view::size();
 
-            static void clear(aligned_ptr<Pointer, Alignment>& object) noexcept
+            static void clear(basic_aligned_ptr<T, Alignment>& object) noexcept
             {
                 put(object, 0u);
             }
 
-            static std::uintmax_t extract(aligned_ptr<Pointer, Alignment> object) noexcept
+            static std::uintmax_t extract(basic_aligned_ptr<T, Alignment> object) noexcept
             {
                 auto int_value = reinterpret_cast<std::uintptr_t>(object.get());
                 return spare_bits_view(int_value).extract();
             }
 
-            static void put(aligned_ptr<Pointer, Alignment>& object, std::uintmax_t bits) noexcept
+            static void put(basic_aligned_ptr<T, Alignment>& object, std::uintmax_t bits) noexcept
             {
                 auto int_value = reinterpret_cast<std::uintptr_t>(object.get());
                 spare_bits_view(int_value).put(bits);
-                object = aligned_ptr<Pointer, Alignment>(int_value);
+                object = basic_aligned_ptr<T, Alignment>(int_value);
             }
         };
+
+        /// Tag type that specifies that an object of type `T` will be aligned for `Alignment`.
+        ///
+        /// It is used for [tiny::aligned_ptr]() and [tiny::pointer_variant_impl]().
+        template <typename T, std::size_t Alignment>
+        struct aligned_obj
+        {
+            using type                             = T;
+            static constexpr std::size_t alignment = Alignment;
+        };
+
+        namespace detail
+        {
+            template <typename T, std::size_t Alignment>
+            struct select_aligned_ptr
+            {
+                using type = basic_aligned_ptr<T, Alignment>;
+            };
+
+            template <typename T, std::size_t Alignment, std::size_t Ignore>
+            struct select_aligned_ptr<aligned_obj<T, Alignment>, Ignore>
+            {
+                using type = basic_aligned_ptr<T, Alignment>;
+            };
+        } // namespace detail
+        /// Convenience alias for [tiny::basic_aligned_ptr]().
+        ///
+        /// If the type is [tiny::aligned_obj]() it will ignore the second argument and use its alignment.
+        /// Otherwise, it will use the alignment of the second argument.
+        template <typename T, std::size_t Alignment = alignof(T)>
+        using aligned_ptr = typename detail::select_aligned_ptr<T, Alignment>::type;
+
+        /// The alignment of an object of the given type.
+        ///
+        /// If the type is [tiny::aligned_obj](), the alignment is the alignment specified there.
+        /// Otherwise it is `alignof(T)`.
+        template <typename T>
+        constexpr std::size_t alignment_of()
+        {
+            return aligned_ptr<T>::alignment();
+        }
     } // namespace tiny
 } // namespace foonathan
 

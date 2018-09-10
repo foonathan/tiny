@@ -22,6 +22,7 @@ set(tests
         aligned_ptr.cpp
         bit_view.cpp
         optional_impl.cpp
+        poiner_variant_impl.cpp
         spare_bits_traits.cpp
         tombstone_traits.cpp
         tiny_pair.cpp)

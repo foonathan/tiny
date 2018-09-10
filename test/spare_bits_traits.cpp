@@ -7,12 +7,20 @@
 #include <catch.hpp>
 
 #include <foonathan/tiny/aligned_ptr.hpp>
+#include <foonathan/tiny/pointer_variant_impl.hpp>
 #include <foonathan/tiny/tiny_pair.hpp>
 
 using namespace foonathan::tiny;
 
 namespace
 {
+    // we need an operator== for pointer_variant_impl
+    template <typename... Ts>
+    bool operator==(const pointer_variant_impl<Ts...>& lhs, const pointer_variant_impl<Ts...>& rhs)
+    {
+        return lhs.tag() == rhs.tag() && lhs.get() == rhs.get();
+    }
+
     template <typename T>
     void verify_extract_put(T big)
     {
@@ -21,7 +29,8 @@ namespace
         REQUIRE(pair.integer() == 0u);
         REQUIRE(pair.big() == big);
 
-        auto max_value = (static_cast<std::uintmax_t>(1) << spare_bits<T>()) - 1u;
+        auto max_value =
+            std::min(std::uintmax_t(255), (static_cast<std::uintmax_t>(1) << spare_bits<T>()) - 1);
         for (auto i = static_cast<typename decltype(pair)::integer_type>(0); i != max_value; ++i)
         {
             pair.set_integer(i);
@@ -171,9 +180,58 @@ TEST_CASE("spare_bits_traits tiny_bool_pair")
 
 TEST_CASE("spare_bits_traits aligned_ptr")
 {
-    REQUIRE(spare_bits<aligned_ptr<void*, 8>>() == 3u);
-    verify_spare_bits(aligned_ptr<void*, 8>(nullptr));
+    REQUIRE(spare_bits<aligned_ptr<void, 8>>() == 3u);
+    verify_spare_bits(aligned_ptr<void, 8>(nullptr));
 
     alignas(8) int obj;
-    verify_spare_bits(aligned_ptr<void*, 8>(&obj));
+    verify_spare_bits(aligned_ptr<void, 8>(&obj));
+}
+
+TEST_CASE("spare_bits_traits pointer_variant_impl")
+{
+    SECTION("not compressed")
+    {
+        using variant = pointer_variant_impl<char, int, double>;
+        REQUIRE(spare_bits<variant>() == sizeof(std::size_t) * CHAR_BIT - 2);
+
+        verify_spare_bits(variant(nullptr));
+
+        int i = 0;
+        verify_spare_bits(variant(&i));
+    }
+    SECTION("compressed: 2")
+    {
+        using variant = pointer_variant_impl<std::int32_t>;
+        REQUIRE(spare_bits<variant>() == 2);
+
+        verify_spare_bits(variant(nullptr));
+
+        std::int32_t i = 0;
+        verify_spare_bits(variant(&i));
+    }
+    SECTION("compressed: 1")
+    {
+        using variant = pointer_variant_impl<std::int32_t, std::uint32_t>;
+        REQUIRE(spare_bits<variant>() == 1);
+
+        verify_spare_bits(variant(nullptr));
+
+        std::int32_t i = 0;
+        verify_spare_bits(variant(&i));
+    }
+    SECTION("compressed: 4")
+    {
+        using variant = pointer_variant_impl<aligned_obj<int, 32>, aligned_obj<unsigned, 64>>;
+        REQUIRE(spare_bits<variant>() == 4);
+
+        verify_spare_bits(variant(nullptr));
+
+        alignas(32) int i = 0;
+        verify_spare_bits(variant(&i));
+    }
+    SECTION("compressed: 0")
+    {
+        using variant = pointer_variant_impl<std::int32_t, std::uint64_t, std::int64_t>;
+        REQUIRE(spare_bits<variant>() == 0);
+    }
 }

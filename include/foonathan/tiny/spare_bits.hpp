@@ -79,11 +79,12 @@ namespace foonathan
                 put(obj, 0);
             }
 
-            static std::uintmax_t extract(bool obj) noexcept
+            static std::uintmax_t extract(const bool& obj) noexcept
             {
                 DEBUG_ASSERT(verify(), detail::precondition_handler{},
                              "memory layout of boolean incorrect");
-                return spare_bits_view(reinterpret_cast<unsigned char&>(obj)).extract();
+                auto bits = reinterpret_cast<const unsigned char&>(obj);
+                return spare_bits_view(bits).extract();
             }
 
             static void put(bool& obj, std::uintmax_t spare_bits) noexcept
@@ -206,7 +207,7 @@ namespace foonathan
                 modifier(const modifier&) = delete;
                 modifier& operator=(const modifier&) = delete;
 
-                modifier(modifier&&) = default;
+                modifier(modifier&&) noexcept = default;
                 modifier& operator=(modifier&&) = delete;
 
                 ~modifier() noexcept

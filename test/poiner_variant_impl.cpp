@@ -75,13 +75,13 @@ namespace
         REQUIRE(v.has_value());
         REQUIRE(v.tag() == a_tag);
         REQUIRE(v.get() == a_ptr);
-        REQUIRE(v.template value<a_type>() == a_ptr);
+        REQUIRE(v.template pointer_to<a_type>() == a_ptr);
 
         v.reset(b_ptr);
         REQUIRE(v.has_value());
         REQUIRE(v.tag() == b_tag);
         REQUIRE(v.get() == b_ptr);
-        REQUIRE(v.template value<b_type>() == b_ptr);
+        REQUIRE(v.template pointer_to<b_type>() == b_ptr);
 
         v.reset(nullptr);
         verify_null(v);
@@ -90,7 +90,7 @@ namespace
         REQUIRE(v.has_value());
         REQUIRE(v.tag() == c_tag);
         REQUIRE(v.get() == c_ptr);
-        REQUIRE(v.template value<c_type>() == c_ptr);
+        REQUIRE(v.template pointer_to<c_type>() == c_ptr);
 
         v.reset(static_cast<a_type*>(nullptr));
         verify_null(v);

@@ -12,15 +12,23 @@
 
 using namespace foonathan::tiny;
 
+namespace foonathan
+{
+    namespace tiny
+    {
+        // we need an operator== for pointer_variant_impl
+        template <typename... Ts>
+        bool operator==(const pointer_variant_impl<Ts...>& lhs,
+                        const pointer_variant_impl<Ts...>& rhs)
+        {
+            return lhs.tag() == rhs.tag() && lhs.get() == rhs.get();
+        }
+
+    } // namespace tiny
+} // namespace foonathan
+
 namespace
 {
-    // we need an operator== for pointer_variant_impl
-    template <typename... Ts>
-    bool operator==(const pointer_variant_impl<Ts...>& lhs, const pointer_variant_impl<Ts...>& rhs)
-    {
-        return lhs.tag() == rhs.tag() && lhs.get() == rhs.get();
-    }
-
     template <typename T>
     void verify_extract_put(T big)
     {

@@ -214,7 +214,7 @@ namespace foonathan
             /// \returns The typed pointer to `T`.
             /// \requires It must contain a pointer to the given type.
             template <typename T>
-            T* value() const noexcept
+            T* pointer_to() const noexcept
             {
                 using tag_of_t = tag_of<T>;
                 static_assert(tag_of_t::is_valid::value, "type cannot be stored in variant");

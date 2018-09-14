@@ -19,13 +19,16 @@ namespace foonathan
             template <std::size_t Size, typename = void>
             struct select_integer_impl
             {
-                static_assert(Size == 0u, "std::uintmax_t is a weird type...?");
+                static_assert(Size == 0u, "too many bits");
                 using type = void;
             };
 
+            constexpr auto max_uint_bits = sizeof(std::uint_least64_t) * CHAR_BIT;
+
 #define FOONATHAN_TINY_DETAIL_SELECT(Min, Max, Type)                                               \
     template <std::size_t Size>                                                                    \
-    struct select_integer_impl<Size, typename std::enable_if<(Size > Min && Size <= Max)>::type>   \
+    struct select_integer_impl<Size,                                                               \
+                               typename std::enable_if<(Size > (Min) && Size <= (Max))>::type>     \
     {                                                                                              \
         using type = Type;                                                                         \
     };
@@ -33,8 +36,7 @@ namespace foonathan
             FOONATHAN_TINY_DETAIL_SELECT(0u, 8u, std::uint_least8_t)
             FOONATHAN_TINY_DETAIL_SELECT(8u, 16u, std::uint_least16_t)
             FOONATHAN_TINY_DETAIL_SELECT(16u, 32u, std::uint_least32_t)
-            FOONATHAN_TINY_DETAIL_SELECT(32u, sizeof(std::uint_least64_t) * CHAR_BIT,
-                                         std::uint_least64_t)
+            FOONATHAN_TINY_DETAIL_SELECT(32u, max_uint_bits, std::uint_least64_t)
 
 #undef FOONATHAN_TINY_DETAIL_SELECT
 

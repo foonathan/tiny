@@ -12,9 +12,8 @@ namespace
 {
     using test_integer = std::uint32_t;
 
-    template <std::size_t Begin, std::size_t End>
-    void test_bit_view(bit_view<test_integer, Begin, End> view, std::uintmax_t value,
-                       const std::string& str)
+    template <typename T, std::size_t Begin, std::size_t End>
+    void test_bit_view(bit_view<T, Begin, End> view, std::uintmax_t value, const std::string& str)
     {
         REQUIRE(view.begin() == Begin);
         REQUIRE(view.end() == End);
@@ -59,7 +58,7 @@ TEST_CASE("bit_view")
     }
     SECTION("no modification outside")
     {
-        integer = test_integer(-1);
+        integer = UINT32_MAX;
         bit_view<test_integer, 0, 4> view(integer);
         test_bit_view(view, 15, "1111");
 
@@ -67,7 +66,7 @@ TEST_CASE("bit_view")
         {
             view.put(0);
             test_bit_view(view, 0, "0000");
-            REQUIRE(integer == test_integer(-1) - 15);
+            REQUIRE(integer == 0xFFFFFFF0);
         }
         SECTION("operator[]")
         {
@@ -76,7 +75,7 @@ TEST_CASE("bit_view")
             view[2] = false;
             view[3] = false;
             test_bit_view(view, 0, "0000");
-            REQUIRE(integer == test_integer(-1) - 15);
+            REQUIRE(integer == 0xFFFFFFF0);
         }
     }
     SECTION("align middle")
@@ -102,7 +101,7 @@ TEST_CASE("bit_view")
     }
     SECTION("align end")
     {
-        integer = test_integer(-1);
+        integer = UINT32_MAX;
         bit_view<test_integer, 16, 32> view(integer);
         test_bit_view(view, UINT16_MAX, "1111111111111111");
 
@@ -125,5 +124,163 @@ TEST_CASE("bit_view")
         bit_view<test_integer, 0, 32> view(integer);
         view.put(std::uintmax_t(-1));
         REQUIRE(integer == UINT32_MAX);
+    }
+}
+
+TEST_CASE("bit_view array")
+{
+    test_integer array[3] = {0u, 0u, 0u};
+
+    SECTION("basic")
+    {
+        SECTION("two array elements")
+        {
+            bit_view<test_integer[3], 24, 40> view(array);
+            test_bit_view(view, 0u, "0000000000000000");
+            REQUIRE(array[0] == 0u);
+            REQUIRE(array[1] == 0u);
+            REQUIRE(array[2] == 0u);
+
+            array[0] = 0xFF000000;
+            array[1] = 0xC;
+            test_bit_view(view, 0xCFF, "1111111100110000");
+            REQUIRE(array[0] == 0xFF000000);
+            REQUIRE(array[1] == 0xC);
+            REQUIRE(array[2] == 0u);
+
+            array[0] |= 0xFF0000;
+            array[1] |= 0xFF00;
+            test_bit_view(view, 0xCFF, "1111111100110000");
+
+            view[0] = false;
+            test_bit_view(view, 0xCFE, "0111111100110000");
+            REQUIRE(array[0] == 0xFEFF0000);
+            REQUIRE(array[1] == 0xFF0C);
+            REQUIRE(array[2] == 0u);
+
+            view.put(0xAAAA);
+            test_bit_view(view, 0xAAAA, "0101010101010101");
+            REQUIRE(array[0] == 0xAAFF0000);
+            REQUIRE(array[1] == 0xFFAA);
+            REQUIRE(array[2] == 0u);
+        }
+        SECTION("three array elements")
+        {
+            bit_view<test_integer[3], 30, 66> view(array);
+            test_bit_view(view, 0u, "000000000000000000000000000000000000");
+            REQUIRE(array[0] == 0u);
+            REQUIRE(array[1] == 0u);
+            REQUIRE(array[2] == 0u);
+
+            array[0] = 0x80000000;
+            array[1] = 0xAAAAAAAA;
+            array[2] = 0xF2;
+            test_bit_view(view, 0xAAAAAAAAA, "010101010101010101010101010101010101");
+
+            array[1] |= 0x55555555;
+            test_bit_view(view, 0xBFFFFFFFE, "011111111111111111111111111111111101");
+
+            view[0] = true;
+            test_bit_view(view, 0xBFFFFFFFF, "111111111111111111111111111111111101");
+            REQUIRE(array[0] == 0xC0000000);
+            REQUIRE(array[1] == 0xFFFFFFFF);
+            REQUIRE(array[2] == 0xF2);
+
+            view.put(0x5555);
+            test_bit_view(view, 0x5555, "101010101010101000000000000000000000");
+            REQUIRE(array[0] == 0x40000000);
+            REQUIRE(array[1] == 0x1555);
+            REQUIRE(array[2] == 0xF0);
+        }
+    }
+    SECTION("no modification outside")
+    {
+        array[0] = UINT32_MAX;
+        array[1] = UINT32_MAX;
+        array[2] = UINT32_MAX;
+
+        SECTION("one array element")
+        {
+            bit_view<test_integer[3], 36, 44> view(array);
+            test_bit_view(view, 0xFF, "11111111");
+
+            SECTION("put")
+            {
+                view.put(0);
+                test_bit_view(view, 0, "00000000");
+                REQUIRE(array[0] == UINT32_MAX);
+                REQUIRE(array[1] == 0xFFFFF00F);
+                REQUIRE(array[2] == UINT32_MAX);
+            }
+            SECTION("operator[]")
+            {
+                view[0] = false;
+                view[1] = false;
+                view[2] = false;
+                view[3] = false;
+                test_bit_view(view, 0xF0, "00001111");
+                REQUIRE(array[0] == UINT32_MAX);
+                REQUIRE(array[1] == 0xFFFFFF0F);
+                REQUIRE(array[2] == UINT32_MAX);
+            }
+        }
+        SECTION("two array elements")
+        {
+            bit_view<test_integer[3], 30, 34> view(array);
+            test_bit_view(view, 15, "1111");
+
+            SECTION("put")
+            {
+                view.put(0);
+                test_bit_view(view, 0, "0000");
+                REQUIRE(array[0] == 0x3FFFFFFF);
+                REQUIRE(array[1] == 0xFFFFFFFC);
+                REQUIRE(array[2] == UINT32_MAX);
+            }
+            SECTION("operator[]")
+            {
+                view[0] = false;
+                view[1] = false;
+                view[2] = false;
+                view[3] = false;
+                test_bit_view(view, 0, "0000");
+                REQUIRE(array[0] == 0x3FFFFFFF);
+                REQUIRE(array[1] == 0xFFFFFFFC);
+                REQUIRE(array[2] == UINT32_MAX);
+            }
+        }
+        SECTION("three array elements")
+        {
+            bit_view<test_integer[3], 28, 68> view(array);
+            test_bit_view(view, 0xFFFFFFFFFF, "1111111111111111111111111111111111111111");
+
+            SECTION("put")
+            {
+                view.put(0);
+                test_bit_view(view, 0, "0000000000000000000000000000000000000000");
+                REQUIRE(array[0] == 0x0FFFFFFF);
+                REQUIRE(array[1] == 0x00000000);
+                REQUIRE(array[2] == 0xFFFFFFF0);
+            }
+            SECTION("operator[]")
+            {
+                view[0]  = false;
+                view[1]  = false;
+                view[2]  = false;
+                view[3]  = false;
+                view[8]  = false;
+                view[9]  = false;
+                view[10] = false;
+                view[11] = false;
+                view[36] = false;
+                view[37] = false;
+                view[38] = false;
+                view[39] = false;
+                test_bit_view(view, 0x0FFFFFF0F0, "0000111100001111111111111111111111110000");
+                REQUIRE(array[0] == 0x0FFFFFFF);
+                REQUIRE(array[1] == 0xFFFFFF0F);
+                REQUIRE(array[2] == 0xFFFFFFF0);
+            }
+        }
     }
 }

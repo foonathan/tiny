@@ -9,22 +9,19 @@
 
 namespace foonathan
 {
-    namespace tiny
+namespace tiny
+{
+    namespace detail
     {
-        namespace detail
-        {
-            // TODO: customizable level
-            struct precondition_handler : debug_assert::default_handler,
-                                          debug_assert::set_level<unsigned(-1)>
-            {
-            };
+        // TODO: customizable level
+        struct precondition_handler : debug_assert::default_handler,
+                                      debug_assert::set_level<unsigned(-1)>
+        {};
 
-            struct assert_handler : debug_assert::default_handler,
-                                    debug_assert::set_level<unsigned(-1)>
-            {
-            };
-        } // namespace detail
-    }     // namespace tiny
+        struct assert_handler : debug_assert::default_handler, debug_assert::set_level<unsigned(-1)>
+        {};
+    } // namespace detail
+} // namespace tiny
 } // namespace foonathan
 
 #endif // FOONATHAN_TINY_DETAIL_ASSERT_HPP_INCLUDED

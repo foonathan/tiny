@@ -20,6 +20,7 @@ endif()
 
 set(tests
         aligned_ptr.cpp
+        bit_field.cpp
         bit_view.cpp
         optional_impl.cpp
         poiner_variant_impl.cpp

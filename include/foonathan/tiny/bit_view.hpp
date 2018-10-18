@@ -57,7 +57,7 @@ namespace tiny
         {
             return length == sizeof(Integer) * CHAR_BIT
                        ? Integer(-1)
-                       : ((Integer(1) << length) - Integer(1)) << begin;
+                       : static_cast<Integer>(((Integer(1) << length) - Integer(1)) << begin);
         }
 
         template <typename Integer, std::size_t Index, std::size_t BeginBit, std::size_t EndBit>
@@ -72,7 +72,7 @@ namespace tiny
 
             static void put(Integer* pointer, std::uintmax_t bits) noexcept
             {
-                pointer[Index] &= ~mask;
+                pointer[Index] &= static_cast<Integer>(~mask);
                 pointer[Index] |= static_cast<Integer>((bits << BeginBit) & mask);
             }
         };
@@ -114,7 +114,7 @@ namespace tiny
 
             static void put_head(Integer* pointer, std::uintmax_t bits) noexcept
             {
-                pointer[BeginIndex] &= ~mask;
+                pointer[BeginIndex] &= static_cast<Integer>(~mask);
                 pointer[BeginIndex] |= static_cast<Integer>((bits << BeginBit) & mask);
             }
 
@@ -148,7 +148,7 @@ namespace tiny
 
             static void put(Integer* pointer, std::uintmax_t bits) noexcept
             {
-                pointer[EndIndex] &= ~mask;
+                pointer[EndIndex] &= static_cast<Integer>(~mask);
                 pointer[EndIndex] |= static_cast<Integer>(bits & mask);
             }
         };

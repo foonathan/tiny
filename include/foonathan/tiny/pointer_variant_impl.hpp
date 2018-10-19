@@ -265,8 +265,8 @@ namespace tiny
         struct spare_bits_traits_pointer_variant_impl<false, Ts...>
         {
         private:
-            using spare_bits_view = bit_view<std::size_t, detail::ilog2_ceil(sizeof...(Ts)),
-                                             sizeof(std::size_t) * CHAR_BIT>;
+            using spare_bits_view
+                = bit_view<std::size_t, detail::ilog2_ceil(sizeof...(Ts)), last_bit>;
 
         public:
             static constexpr auto spare_bits = spare_bits_view::size();

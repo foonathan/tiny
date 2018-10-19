@@ -10,25 +10,25 @@ using namespace foonathan::tiny;
 
 namespace
 {
-    using test_integer = std::uint32_t;
+using test_integer = std::uint32_t;
 
-    template <typename T, std::size_t Begin, std::size_t End>
-    void test_bit_view(bit_view<T, Begin, End> view, std::uintmax_t value, const std::string& str)
-    {
-        REQUIRE(view.begin() == Begin);
-        REQUIRE(view.end() == End);
-        REQUIRE(view.size() == str.size());
+template <typename T, std::size_t Begin, std::size_t End>
+void test_bit_view(bit_view<T, Begin, End> view, std::uintmax_t value, const std::string& str)
+{
+    REQUIRE(view.begin() == Begin);
+    REQUIRE(view.end() == End);
+    REQUIRE(view.size() == str.size());
 
-        std::string stored_str;
-        for (auto i = 0u; i != view.size(); ++i)
-            if (view[i])
-                stored_str += '1';
-            else
-                stored_str += '0';
-        REQUIRE(stored_str == str);
+    std::string stored_str;
+    for (auto i = 0u; i != view.size(); ++i)
+        if (view[i])
+            stored_str += '1';
+        else
+            stored_str += '0';
+    REQUIRE(stored_str == str);
 
-        REQUIRE(view.extract() == value);
-    }
+    REQUIRE(view.extract() == value);
+}
 } // namespace
 
 TEST_CASE("bit_view")
@@ -283,4 +283,28 @@ TEST_CASE("bit_view array")
             }
         }
     }
+}
+
+TEST_CASE("bit_view convenience")
+{
+    unsigned value = 0;
+
+    put_bits<0, 1>(value, 1);
+    REQUIRE(value == 1);
+
+    put_bits<1, 3>(value, 7);
+    REQUIRE(value == 7);
+
+    REQUIRE(extract_bits<1, 3>(value) == 3);
+
+    REQUIRE(are_cleared_bits<3, 5>(value));
+    REQUIRE(are_only_bits<0, 3>(value));
+    REQUIRE(are_only_bits<0, 5>(value));
+    REQUIRE(are_only_bits<0, last_bit>(value));
+
+    clear_bits<1, 2>(value);
+    REQUIRE(value == 5);
+
+    clear_other_bits<1, 2>(value);
+    REQUIRE(value == 0);
 }

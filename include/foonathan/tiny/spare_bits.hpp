@@ -62,7 +62,7 @@ namespace tiny
         static_assert(std::is_constructible<Boolean, bool>::value,
                       "must be constructible from bool");
 
-        using spare_bits_view = bit_view<unsigned char, 1u, CHAR_BIT>;
+        using spare_bits_view = bit_view<unsigned char, 1u, last_bit>;
 
         static bool verify() noexcept
         {
@@ -243,10 +243,7 @@ namespace tiny
     template <typename T>
     void put_spare_bits(T& obj, std::uintmax_t bits) noexcept
     {
-        DEBUG_ASSERT((bit_view<std::uintmax_t, spare_bits<T>(), sizeof(std::uintmax_t) * CHAR_BIT>(
-                          bits)
-                          .extract())
-                         == 0u,
+        DEBUG_ASSERT((bit_view<std::uintmax_t, spare_bits<T>(), last_bit>(bits).extract()) == 0u,
                      detail::precondition_handler{}, "attempt to set more bits than can fit");
         spare_bits_traits<T>::put(obj, bits);
     }

@@ -99,9 +99,8 @@ namespace tiny
             {
                 static_assert(sizeof(Integer) == sizeof(Integer) && !std::is_const<Field>::value,
                               "must not modify const reference");
-                DEBUG_ASSERT((bit_view<Integer, bits(), sizeof(Integer) * CHAR_BIT>(i).extract()
-                              == 0),
-                             detail::precondition_handler{}, "overflow in bit field");
+                DEBUG_ASSERT((are_only_bits<0, bits()>(i)), detail::precondition_handler{},
+                             "overflow in bit field");
                 view_.put(static_cast<std::uintmax_t>(i));
             }
 
@@ -470,8 +469,7 @@ namespace tiny
                 // and clear any overflow bits
                 auto absolute_value = static_cast<unsigned_type>(~unsigned_rep + 1);
                 // clear any overflow bits
-                absolute_value = static_cast<unsigned_type>(
-                    bit_view<unsigned_type, 0, SizeInBits>(absolute_value).extract());
+                clear_other_bits<0, SizeInBits>(absolute_value);
                 // return absolute value properly negated
                 return static_cast<integer_type>(-static_cast<integer_type>(absolute_value));
             }

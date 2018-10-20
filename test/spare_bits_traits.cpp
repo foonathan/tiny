@@ -14,55 +14,54 @@ using namespace foonathan::tiny;
 
 namespace foonathan
 {
-    namespace tiny
+namespace tiny
+{
+    // we need an operator== for pointer_variant_impl
+    template <typename... Ts>
+    bool operator==(const pointer_variant_impl<Ts...>& lhs, const pointer_variant_impl<Ts...>& rhs)
     {
-        // we need an operator== for pointer_variant_impl
-        template <typename... Ts>
-        bool operator==(const pointer_variant_impl<Ts...>& lhs,
-                        const pointer_variant_impl<Ts...>& rhs)
-        {
-            return lhs.tag() == rhs.tag() && lhs.get() == rhs.get();
-        }
+        return lhs.tag() == rhs.tag() && lhs.get() == rhs.get();
+    }
 
-    } // namespace tiny
+} // namespace tiny
 } // namespace foonathan
 
 namespace
 {
-    template <typename T>
-    void verify_extract_put(T big)
+template <typename T>
+void verify_extract_put(T big)
+{
+    tiny_pair_impl<T, spare_bits<T>()> pair(big, 0u);
+    REQUIRE(decltype(pair)::is_compressed::value);
+    REQUIRE(pair.integer() == 0u);
+    REQUIRE(pair.big() == big);
+
+    auto max_value
+        = std::min(std::uintmax_t(255), (static_cast<std::uintmax_t>(1) << spare_bits<T>()) - 1);
+    for (auto i = static_cast<typename decltype(pair)::integer_type>(0); i != max_value; ++i)
     {
-        tiny_pair_impl<T, spare_bits<T>()> pair(big, 0u);
-        REQUIRE(decltype(pair)::is_compressed::value);
-        REQUIRE(pair.integer() == 0u);
+        pair.set_integer(i);
+        REQUIRE(pair.integer() == i);
         REQUIRE(pair.big() == big);
-
-        auto max_value =
-            std::min(std::uintmax_t(255), (static_cast<std::uintmax_t>(1) << spare_bits<T>()) - 1);
-        for (auto i = static_cast<typename decltype(pair)::integer_type>(0); i != max_value; ++i)
-        {
-            pair.set_integer(i);
-            REQUIRE(pair.integer() == i);
-            REQUIRE(pair.big() == big);
-        }
     }
+}
 
-    template <typename T>
-    void verify_clear(T big)
-    {
-        T t(big);
-        if (spare_bits<T>() > 0u)
-            put_spare_bits(t, 1u);
-        clear_spare_bits(t);
-        REQUIRE(t == big);
-    }
+template <typename T>
+void verify_clear(T big)
+{
+    T t(big);
+    if (spare_bits<T>() > 0u)
+        put_spare_bits(t, 1u);
+    clear_spare_bits(t);
+    REQUIRE(t == big);
+}
 
-    template <typename T>
-    void verify_spare_bits(T big)
-    {
-        verify_extract_put(big);
-        verify_clear(big);
-    }
+template <typename T>
+void verify_spare_bits(T big)
+{
+    verify_extract_put(big);
+    verify_clear(big);
+}
 } // namespace
 
 TEST_CASE("spare_bits_traits default")
@@ -80,16 +79,16 @@ TEST_CASE("spare_bits_traits bool")
 
 namespace
 {
-    template <typename T>
-    void verify_pointer(std::size_t align, std::size_t spare)
-    {
-        REQUIRE(alignof(T) == align);
-        REQUIRE(spare_bits<T*>() == spare);
+template <typename T>
+void verify_pointer(std::size_t align, std::size_t spare)
+{
+    REQUIRE(alignof(T) == align);
+    REQUIRE(spare_bits<T*>() == spare);
 
-        T obj;
-        verify_spare_bits(&obj);
-        verify_spare_bits(static_cast<T*>(nullptr));
-    }
+    T obj;
+    verify_spare_bits(&obj);
+    verify_spare_bits(static_cast<T*>(nullptr));
+}
 } // namespace
 
 TEST_CASE("spare_bits_traits pointer")
@@ -116,30 +115,61 @@ TEST_CASE("spare_bits_traits pointer")
 
 namespace
 {
-    struct member_test_type
-    {
-        int  i;
-        bool b1;
-        bool b2;
+enum class test_enum
+{
+    a,
+    b,
+    c,
+    d,
 
-        friend bool operator==(member_test_type lhs, member_test_type rhs)
-        {
-            return lhs.i == rhs.i && lhs.b1 == rhs.b1 && lhs.b2 == rhs.b2;
-        }
-    };
+    count_,
+};
+}
+
+namespace foonathan
+{
+namespace tiny
+{
+    template <>
+    struct spare_bits_traits<test_enum>
+    : spare_bits_traits_enum<enum_traits_unsigned_count<test_enum, test_enum::count_>>
+    {};
+} // namespace tiny
+} // namespace foonathan
+
+TEST_CASE("spare_bits_traits enum")
+{
+    verify_spare_bits(test_enum::a);
+    verify_spare_bits(test_enum::b);
+    verify_spare_bits(test_enum::c);
+    verify_spare_bits(test_enum::d);
+}
+
+namespace
+{
+struct member_test_type
+{
+    int  i;
+    bool b1;
+    bool b2;
+
+    friend bool operator==(member_test_type lhs, member_test_type rhs)
+    {
+        return lhs.i == rhs.i && lhs.b1 == rhs.b1 && lhs.b2 == rhs.b2;
+    }
+};
 } // namespace
 
 namespace foonathan
 {
-    namespace tiny
-    {
-        template <>
-        struct spare_bits_traits<member_test_type>
-        : spare_bits_traits_member<member_test_type, FOONATHAN_TINY_MEMBER(&member_test_type::b1),
-                                   FOONATHAN_TINY_MEMBER(&member_test_type::b2)>
-        {
-        };
-    } // namespace tiny
+namespace tiny
+{
+    template <>
+    struct spare_bits_traits<member_test_type>
+    : spare_bits_traits_member<member_test_type, FOONATHAN_TINY_MEMBER(&member_test_type::b1),
+                               FOONATHAN_TINY_MEMBER(&member_test_type::b2)>
+    {};
+} // namespace tiny
 } // namespace foonathan
 
 TEST_CASE("spare_bits_traits member")
@@ -156,17 +186,17 @@ TEST_CASE("spare_bits_traits member")
 
 namespace
 {
-    template <typename T>
-    void verify_pair(std::size_t spare)
-    {
-        using pair = tiny_bool_pair<T*>;
-        REQUIRE(spare_bits<pair>() == spare);
+template <typename T>
+void verify_pair(std::size_t spare)
+{
+    using pair = tiny_bool_pair<T*>;
+    REQUIRE(spare_bits<pair>() == spare);
 
-        verify_spare_bits(pair(nullptr, false));
+    verify_spare_bits(pair(nullptr, false));
 
-        T obj;
-        verify_spare_bits(pair(&obj, true));
-    }
+    T obj;
+    verify_spare_bits(pair(&obj, true));
+}
 } // namespace
 
 TEST_CASE("spare_bits_traits tiny_bool_pair")

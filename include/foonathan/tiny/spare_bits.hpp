@@ -7,6 +7,7 @@
 
 #include <foonathan/tiny/bit_view.hpp>
 #include <foonathan/tiny/detail/ilog2.hpp>
+#include <foonathan/tiny/enum_traits.hpp>
 
 namespace foonathan
 {
@@ -129,6 +130,46 @@ namespace tiny
             auto int_value = reinterpret_cast<std::uintptr_t>(object);
             spare_bits_view(int_value).put(bits);
             object = reinterpret_cast<Pointer>(int_value);
+        }
+    };
+
+    /// The spare bits of an enum type.
+    ///
+    /// `EnumOrTraits` is either an enum type or an `enum_traits`-like type.
+    /// [lex::traits_of_enum]() is then applied.
+    ///
+    /// \requires The enum must be contiguous with the valid enumerators stored in the range `[0,
+    /// Traits::max]`.
+    template <class EnumOrTraits>
+    class spare_bits_traits_enum
+    {
+        using traits    = traits_of_enum<EnumOrTraits>;
+        using enum_type = typename traits::enum_type;
+        static_assert(traits::is_contiguous, "enum must be contiguous");
+        static_assert(traits::min == enum_type(0), "enum values must start at 0");
+
+        using underlying_type = typename std::underlying_type<enum_type>::type;
+        using spare_bits_view = bit_view<underlying_type, enum_bit_size<EnumOrTraits>(), last_bit>;
+
+    public:
+        static constexpr auto spare_bits = spare_bits_view::size();
+
+        static void clear(enum_type& object) noexcept
+        {
+            put(object, 0);
+        }
+
+        static std::uintmax_t extract(enum_type object) noexcept
+        {
+            auto int_value = static_cast<underlying_type>(object);
+            return spare_bits_view(int_value).extract();
+        }
+
+        static void put(enum_type& object, std::uintmax_t bits) noexcept
+        {
+            auto int_value = static_cast<underlying_type>(object);
+            spare_bits_view(int_value).put(bits);
+            object = static_cast<enum_type>(int_value);
         }
     };
 
@@ -309,9 +350,9 @@ namespace tiny
         };
     } // namespace detail
 
-    /// A spare bits traits implementation that forwards to the given members.
+    /// A spare bits traits implementation that uses the spare bits of the given members.
     /// \requires Every member must be the [tiny::member_ptr_t]() tag where the class type matches
-    /// `T`.
+    /// `T` as created by `FOONATHAN_TINY_MEMBER()`, for example.
     template <class T, typename... Members>
     struct spare_bits_traits_member : detail::spare_bits_traits_member<T, Members...>
     {};

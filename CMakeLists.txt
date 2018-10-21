@@ -8,18 +8,20 @@ project(foonathan_tiny)
 set(detail_header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/detail/assert.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/detail/ilog2.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/detail/index_sequence.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/detail/select_integer.hpp
     )
 set(header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/aligned_ptr.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/bit_field.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/bit_view.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/enum_traits.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/enum_traits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/optional_impl.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/pointer_variant_impl.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/spare_bits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tombstone.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_pair.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_type.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_type_storage.hpp
     )
 add_library(foonathan_tiny INTERFACE)
 target_sources(foonathan_tiny INTERFACE ${detail_header_files} ${header_files})

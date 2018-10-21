@@ -38,10 +38,16 @@ namespace tiny
         static constexpr auto is_specialized = false;
 
         /// The first (numerically minimal) valid enum value.
-        static constexpr Enum min = Enum(std::numeric_limits<underlying_type>::min());
+        static constexpr Enum min() noexcept
+        {
+            return Enum(std::numeric_limits<underlying_type>::min());
+        }
 
         /// The last (numerically maximal) valid enum value.
-        static constexpr Enum max = Enum(std::numeric_limits<underlying_type>::max());
+        static constexpr Enum max() noexcept
+        {
+            return Enum(std::numeric_limits<underlying_type>::max());
+        }
 
         /// Whether or not all enum values are contiguously.
         static constexpr auto is_contiguous = false;
@@ -58,8 +64,15 @@ namespace tiny
 
         static constexpr auto is_specialized = true;
 
-        static constexpr Enum min = Enum(0);
-        static constexpr Enum max = MaxValue;
+        static constexpr Enum min() noexcept
+        {
+            return Enum(0);
+        }
+
+        static constexpr Enum max() noexcept
+        {
+            return MaxValue;
+        }
 
         static constexpr auto is_contiguous = true;
     };
@@ -83,8 +96,14 @@ namespace tiny
 
         static constexpr auto is_specialized = true;
 
-        static constexpr Enum min = MinValue;
-        static constexpr Enum max = MaxValue;
+        static constexpr Enum min() noexcept
+        {
+            return MinValue;
+        }
+        static constexpr Enum max() noexcept
+        {
+            return MaxValue;
+        }
 
         static constexpr auto is_contiguous = true;
     };
@@ -122,7 +141,7 @@ namespace tiny
     {
         using traits = traits_of_enum<EnumOrTraits>;
         static_assert(traits::is_contiguous, "enum must be contiguous");
-        return std::size_t(traits::max) - std::size_t(traits::min) + 1;
+        return std::size_t(traits::max()) - std::size_t(traits::min()) + 1;
     }
 
     /// \returns The number of bits required to store a valid enum value.
@@ -147,8 +166,8 @@ namespace tiny
     {
         static_assert(Traits::is_contiguous, "enum must be contiguous");
         using underlying = typename std::underlying_type<Enum>::type;
-        return underlying(Traits::min) <= underlying(value)
-               && underlying(value) <= underlying(Traits::max);
+        return underlying(Traits::min()) <= underlying(value)
+               && underlying(value) <= underlying(Traits::max());
     }
 } // namespace tiny
 } // namespace foonathan

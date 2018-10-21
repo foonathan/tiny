@@ -365,6 +365,13 @@ namespace tiny
         friend class bit_view;
     };
 
+    /// \returns The specified bit view.
+    template <std::size_t Begin, std::size_t End, typename Integer>
+    bit_view<Integer, Begin, End> make_bit_view(Integer& i) noexcept
+    {
+        return bit_view<Integer, Begin, End>(i);
+    }
+
     /// Extracts the specified range of bits from an integer.
     /// \returns `bit_view<Integer, Begin, End>(i).extract()`
     template <std::size_t Begin, std::size_t End, typename Integer>

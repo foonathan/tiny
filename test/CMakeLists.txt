@@ -20,13 +20,14 @@ endif()
 
 set(tests
         aligned_ptr.cpp
-        bit_field.cpp
         bit_view.cpp
         optional_impl.cpp
         poiner_variant_impl.cpp
         spare_bits_traits.cpp
         tombstone_traits.cpp
-        tiny_pair.cpp)
+        tiny_pair.cpp
+        tiny_type.cpp
+        tiny_type_storage.cpp)
 
 add_executable(foonathan_tiny_test
                test.cpp

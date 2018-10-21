@@ -146,7 +146,7 @@ namespace tiny
         using traits    = traits_of_enum<EnumOrTraits>;
         using enum_type = typename traits::enum_type;
         static_assert(traits::is_contiguous, "enum must be contiguous");
-        static_assert(traits::min == enum_type(0), "enum values must start at 0");
+        static_assert(traits::min() == enum_type(0), "enum values must start at 0");
 
         using underlying_type = typename std::underlying_type<enum_type>::type;
         using spare_bits_view = bit_view<underlying_type, enum_bit_size<EnumOrTraits>(), last_bit>;

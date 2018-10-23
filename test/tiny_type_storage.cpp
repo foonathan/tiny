@@ -20,20 +20,20 @@ TEST_CASE("tiny_type_storage")
     storage     s;
     const auto& cs = s;
 
-    REQUIRE(s.get<0>() == 0);
-    REQUIRE(s.get<1>() == false);
-    REQUIRE(s.get<2>() == false);
+    REQUIRE(s.at<0>() == 0);
+    REQUIRE(s.at<1>() == false);
+    REQUIRE(s.at<2>() == false);
 
-    s.get<0>() = 42;
-    s.get<1>() = true;
-    s.get<2>() = true;
+    s.at<0>() = 42;
+    s.at<1>() = true;
+    s.at<2>() = true;
 
-    REQUIRE(s.get<0>() == 42);
-    REQUIRE(s.get<1>() == true);
-    REQUIRE(s.get<2>() == true);
-    REQUIRE(cs.get<0>() == 42);
-    REQUIRE(cs.get<1>() == true);
-    REQUIRE(cs.get<2>() == true);
+    REQUIRE(s.at<0>() == 42);
+    REQUIRE(s.at<1>() == true);
+    REQUIRE(s.at<2>() == true);
+    REQUIRE(cs.at<0>() == 42);
+    REQUIRE(cs.at<1>() == true);
+    REQUIRE(cs.at<2>() == true);
 
     REQUIRE(s[tiny_unsigned<7>{}] == 42);
     REQUIRE(s[first{}] == true);
@@ -42,15 +42,8 @@ TEST_CASE("tiny_type_storage")
     REQUIRE(cs[first{}] == true);
     REQUIRE(cs[second{}] == true);
 
-    REQUIRE(s.get<tiny_unsigned<7>>() == 42);
-    REQUIRE(s.get<first>() == true);
-    REQUIRE(s.get<second>() == true);
-    REQUIRE(cs.get<tiny_unsigned<7>>() == 42);
-    REQUIRE(cs.get<first>() == true);
-    REQUIRE(cs.get<second>() == true);
-
     s = storage(7, false, true);
-    REQUIRE(s.get<0>() == 7);
-    REQUIRE(s.get<1>() == false);
-    REQUIRE(s.get<2>() == true);
+    REQUIRE(s.at<0>() == 7);
+    REQUIRE(s.at<1>() == false);
+    REQUIRE(s.at<2>() == true);
 }

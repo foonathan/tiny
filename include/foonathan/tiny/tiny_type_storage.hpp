@@ -5,6 +5,8 @@
 #ifndef FOONATHAN_TINY_TINY_TYPE_STORAGE_HPP_INCLUDED
 #define FOONATHAN_TINY_TINY_TYPE_STORAGE_HPP_INCLUDED
 
+#include <cstring>
+
 #include <foonathan/tiny/detail/index_sequence.hpp>
 #include <foonathan/tiny/tiny_type.hpp>
 
@@ -29,24 +31,6 @@ namespace tiny
 
     namespace tiny_storage_detail
     {
-        //=== storage_type ===//
-        template <class... TinyTypes>
-        struct total_size;
-
-        template <>
-        struct total_size<> : std::integral_constant<std::size_t, 0>
-        {};
-
-        template <class Head, class... Tail>
-        struct total_size<Head, Tail...>
-        : std::integral_constant<std::size_t, Head::bit_size() + total_size<Tail...>::value>
-        {};
-
-        template <class... TinyTypes>
-        using storage_type
-            = unsigned char[total_size<TinyTypes...>::value / CHAR_BIT
-                            + (total_size<TinyTypes...>::value % CHAR_BIT == 0 ? 0 : 1)];
-
         //=== is_target ===//
         template <std::size_t Index, typename Target, class TinyType>
         struct is_target : std::false_type
@@ -97,113 +81,229 @@ namespace tiny
 
             using type = typename result::type;
 
-            using view  = bit_view<storage_type<TinyTypes...>, result::offset,
-                                  result::offset + type::bit_size()>;
-            using cview = bit_view<const storage_type<TinyTypes...>, result::offset,
-                                   result::offset + type::bit_size()>;
-
-            using proxy  = typename type::template proxy<view>;
-            using cproxy = typename type::template proxy<cview>;
+            static constexpr std::size_t offset = result::offset;
         };
 
         template <typename Target, class... TinyTypes>
         using tiny_type = typename find<Target, TinyTypes...>::type;
 
         template <typename Target, class... TinyTypes>
-        using view_of = typename find<Target, TinyTypes...>::view;
-        template <typename Target, class... TinyTypes>
-        using cview_of = typename find<Target, TinyTypes...>::cview;
+        static constexpr std::size_t offset_of() noexcept
+        {
+            return find<Target, TinyTypes...>::offset;
+        }
 
-        template <typename Target, class... TinyTypes>
-        using proxy_of = typename find<Target, TinyTypes...>::proxy;
-        template <typename Target, class... TinyTypes>
-        using cproxy_of = typename find<Target, TinyTypes...>::cproxy;
+        //=== total_size ===//
+        template <class... TinyTypes>
+        struct total_size;
+
+        template <>
+        struct total_size<> : std::integral_constant<std::size_t, 0>
+        {};
+
+        template <class Head, class... Tail>
+        struct total_size<Head, Tail...>
+        : std::integral_constant<std::size_t, Head::bit_size() + total_size<Tail...>::value>
+        {};
+
     } // namespace tiny_storage_detail
 
-    template <class... TinyTypes>
-    class tiny_type_storage
+#if 0
+    /// The policy controlling how the tiny types are stored.
+    ///
+    /// It must be able to store all of the tiny types given to it.
+    template <class ... TinyTypes>
+    class TinyStoragePolicy
     {
+        /// Whether or not the tiny types are stored without using extra space.
+        using is_compressed = std::integral_constant<bool, …>;
+
+        TinyStoragePolicy() noexcept;
+
+        /// \returns A bit view into the bits used for the storage.
+        BitView storage_view() noexcept;
+        BitView storage_view() const noexcept;
+    };
+#endif
+
+    /// \returns The total number of bits required to store all the tiny types.
+    template <class... TinyTypes>
+    constexpr std::size_t total_bit_size() noexcept
+    {
+        return tiny_storage_detail::total_size<TinyTypes...>::value;
+    }
+
+    /// A type that has at least `Bits` bits and is thus able to store tiny types.
+    template <std::size_t Bits>
+    using tiny_storage_type
+        = unsigned char[Bits == 0 ? 1 : Bits / CHAR_BIT + (Bits % CHAR_BIT == 0 ? 0 : 1)];
+
+    /// A type that is able to store the specified tiny types.
+    template <class... TinyTypes>
+    using tiny_storage_type_for = tiny_storage_type<total_bit_size<TinyTypes...>()>;
+
+    /// The basic template for storing multiple tiny types.
+    ///
+    /// It provides and implements the accessing function and manages the exact offsets of the tiny
+    /// types. An implementation provides the `TinyStoragePolicy`, which is stored as a base class,
+    /// and provides the actual storage for the types.
+    ///
+    /// Then the implementation inherits from this class providing additional member functions as
+    /// needed.
+    template <class TinyStoragePolicy, class... TinyTypes>
+    class basic_tiny_type_storage : TinyStoragePolicy
+    {
+        template <class Type, std::size_t Offset>
+        using proxy = decltype(
+            make_tiny_proxy<Type>(std::declval<TinyStoragePolicy&>()
+                                      .storage_view()
+                                      .template subview<Offset, Offset + Type::bit_size()>()));
+        template <class Type, std::size_t Offset>
+        using cproxy = decltype(
+            make_tiny_proxy<Type>(std::declval<const TinyStoragePolicy&>()
+                                      .storage_view()
+                                      .template subview<Offset, Offset + Type::bit_size()>()));
+
+        template <typename Tag>
+        using proxy_of = proxy<tiny_storage_detail::tiny_type<Tag, TinyTypes...>,
+                               tiny_storage_detail::offset_of<Tag, TinyTypes...>()>;
+        template <typename Tag>
+        using cproxy_of = cproxy<tiny_storage_detail::tiny_type<Tag, TinyTypes...>,
+                                 tiny_storage_detail::offset_of<Tag, TinyTypes...>()>;
+
+        template <typename Tag>
+        proxy_of<Tag> get_impl() noexcept
+        {
+            using type            = tiny_storage_detail::tiny_type<Tag, TinyTypes...>;
+            constexpr auto offset = tiny_storage_detail::offset_of<Tag, TinyTypes...>();
+
+            return make_tiny_proxy<type>(
+                this->storage_view().template subview<offset, offset + type::bit_size()>());
+        }
+        template <typename Tag>
+        cproxy_of<Tag> get_impl() const noexcept
+        {
+            using type            = tiny_storage_detail::tiny_type<Tag, TinyTypes...>;
+            constexpr auto offset = tiny_storage_detail::offset_of<Tag, TinyTypes...>();
+
+            return make_tiny_proxy<type>(
+                this->storage_view().template subview<offset, offset + type::bit_size()>());
+        }
+
     public:
+        /// Whether or not the tiny types are stored without using extra space.
+        using is_compressed = typename TinyStoragePolicy::is_compressed;
+
         //=== constructors ===//
         /// Default constructor.
         /// \effects Initializes all tiny types to the value corresponding to all zeroes.
-        tiny_type_storage() noexcept : storage_{} {}
+        basic_tiny_type_storage() noexcept
+        {
+            this->storage_view().put(0);
+        }
 
         /// Object constructor.
         /// \effects Initializes all tiny types from the corresponding object type.
-        tiny_type_storage(typename TinyTypes::object_type... objects) noexcept
-        : tiny_type_storage(detail::make_index_sequence<sizeof...(TinyTypes)>{}, objects...)
+        basic_tiny_type_storage(typename TinyTypes::object_type... objects) noexcept
+        : basic_tiny_type_storage(detail::make_index_sequence<sizeof...(TinyTypes)>{}, objects...)
         {}
 
         //=== access ===//
         /// Array access operator.
-        /// \returns `get<Tag>()`.
+        /// \returns The proxy for the tiny type matching `Tag`.
+        /// If `Tag` is a tiny type, it matches the specified type.
+        /// It is an error if there is more than one of those tiny types in the storage.
+        /// Otherwise, `Tag` tries to match the tag of a [lex::tiny_tagged]() type.
         /// \group array
         template <class Tag>
-        auto operator[](Tag) noexcept -> tiny_storage_detail::proxy_of<Tag, TinyTypes...>
+        auto operator[](Tag) noexcept -> proxy_of<Tag>
         {
-            return make_tiny_proxy<tiny_storage_detail::tiny_type<Tag, TinyTypes...>>(
-                tiny_storage_detail::view_of<Tag, TinyTypes...>(storage_));
+            return get_impl<Tag>();
         }
         /// \group array
         template <class Tag>
-        auto operator[](Tag) const noexcept -> tiny_storage_detail::cproxy_of<Tag, TinyTypes...>
+        auto operator[](Tag) const noexcept -> cproxy_of<Tag>
         {
-            return make_tiny_proxy<tiny_storage_detail::tiny_type<Tag, TinyTypes...>>(
-                tiny_storage_detail::cview_of<Tag, TinyTypes...>(storage_));
+            return get_impl<Tag>();
         }
 
-        /// \returns `get<std::integral_constant<std::size_t, I>>()`.
-        /// \group get_index
+        /// \returns The proxy of the tiny type at the specified index.
+        /// \group at
         template <std::size_t I>
-        auto get() noexcept
-            -> tiny_storage_detail::proxy_of<std::integral_constant<std::size_t, I>, TinyTypes...>
+        auto at() noexcept -> proxy_of<std::integral_constant<std::size_t, I>>
         {
-            return make_tiny_proxy<tiny_storage_detail::tiny_type<
-                std::integral_constant<std::size_t, I>, TinyTypes...>>(
-                tiny_storage_detail::view_of<std::integral_constant<std::size_t, I>, TinyTypes...>(
-                    storage_));
+            static_assert(I < sizeof...(TinyTypes), "index out of bounds");
+            return get_impl<std::integral_constant<std::size_t, I>>();
         }
-        /// \group get_index
+        /// \group at
         template <std::size_t I>
-        auto get() const noexcept
-            -> tiny_storage_detail::cproxy_of<std::integral_constant<std::size_t, I>, TinyTypes...>
+        auto at() const noexcept -> cproxy_of<std::integral_constant<std::size_t, I>>
         {
-            return make_tiny_proxy<tiny_storage_detail::tiny_type<
-                std::integral_constant<std::size_t, I>, TinyTypes...>>(
-                tiny_storage_detail::cview_of<std::integral_constant<std::size_t, I>, TinyTypes...>(
-                    storage_));
+            static_assert(I < sizeof...(TinyTypes), "index out of bounds");
+            return get_impl<std::integral_constant<std::size_t, I>>();
         }
 
-        /// \returns The proxy of the tiny type corresponding to `Tag`.
-        /// `Tag` can be `std::integral_constant<std::size_t, I>`, which matches to the `I`th type,
-        /// one of the exact types or the tag from [lex::tiny_tagged]().
-        /// \group get
-        template <class Tag>
-        auto get() noexcept -> tiny_storage_detail::proxy_of<Tag, TinyTypes...>
+    protected:
+        ~basic_tiny_type_storage() noexcept = default;
+
+        /// \returns The storage policy.
+        /// \group storage_policy
+        TinyStoragePolicy& storage_policy() noexcept
         {
-            return make_tiny_proxy<tiny_storage_detail::tiny_type<Tag, TinyTypes...>>(
-                tiny_storage_detail::view_of<Tag, TinyTypes...>(storage_));
+            return *this;
         }
-        /// \group get
-        template <class Tag>
-        auto get() const noexcept -> tiny_storage_detail::cproxy_of<Tag, TinyTypes...>
+        /// \group storage_policy
+        const TinyStoragePolicy& storage_policy() const noexcept
         {
-            return make_tiny_proxy<tiny_storage_detail::tiny_type<Tag, TinyTypes...>>(
-                tiny_storage_detail::cview_of<Tag, TinyTypes...>(storage_));
+            return *this;
         }
 
     private:
         template <std::size_t... Indices>
-        tiny_type_storage(detail::index_sequence<Indices...>,
-                          typename TinyTypes::object_type... objects)
-        : storage_{}
+        basic_tiny_type_storage(detail::index_sequence<Indices...>,
+                                typename TinyTypes::object_type... objects)
         {
-            bool for_each[] = {(get<Indices>() = objects, true)..., true};
+            bool for_each[] = {(at<Indices>() = objects, true)..., true};
             (void)for_each;
         }
+    };
 
-        tiny_storage_detail::storage_type<TinyTypes...> storage_;
+    namespace tiny_storage_detail
+    {
+        //=== embedded_storage_policy ===//
+        template <class... TinyTypes>
+        class embedded_storage_policy
+        {
+            using is_compressed = std::false_type;
+
+            embedded_storage_policy() noexcept = default;
+
+            using storage_type = tiny_storage_type_for<TinyTypes...>;
+
+            bit_view<storage_type, 0, last_bit> storage_view() noexcept
+            {
+                return make_bit_view<0, last_bit>(storage_);
+            }
+            bit_view<const storage_type, 0, last_bit> storage_view() const noexcept
+            {
+                return make_bit_view<0, last_bit>(storage_);
+            }
+
+            storage_type storage_;
+
+            friend basic_tiny_type_storage<embedded_storage_policy<TinyTypes...>, TinyTypes...>;
+        };
+    } // namespace tiny_storage_detail
+
+    /// A compressed tuple of tiny types.
+    template <class... TinyTypes>
+    class tiny_type_storage
+    : public basic_tiny_type_storage<tiny_storage_detail::embedded_storage_policy<TinyTypes...>,
+                                     TinyTypes...>
+    {
+    public:
+        using basic_tiny_type_storage<tiny_storage_detail::embedded_storage_policy<TinyTypes...>,
+                                      TinyTypes...>::basic_tiny_type_storage;
     };
 } // namespace tiny
 } // namespace foonathan

@@ -53,6 +53,12 @@ TEST_CASE("bit_view")
         view.put(0xAA);
         test_bit_view(view, 0xAA, "0101010100");
         REQUIRE(integer == 2048 + 0xAA);
+
+        SECTION("subview")
+        {
+            auto sub = view.subview<2, 6>();
+            test_bit_view(sub, 0xA, "0101");
+        }
     }
     SECTION("no modification outside")
     {
@@ -161,6 +167,12 @@ TEST_CASE("bit_view array")
             REQUIRE(array[0] == 0xAAFF0000);
             REQUIRE(array[1] == 0xFFAA);
             REQUIRE(array[2] == 0u);
+
+            SECTION("subview")
+            {
+                auto sub = view.subview<6, 10>();
+                test_bit_view(sub, 0xA, "0101");
+            }
         }
         SECTION("three array elements")
         {
@@ -189,6 +201,12 @@ TEST_CASE("bit_view array")
             REQUIRE(array[0] == 0x40000000);
             REQUIRE(array[1] == 0x1555);
             REQUIRE(array[2] == 0xF0);
+
+            SECTION("subview")
+            {
+                auto sub = view.subview<0, 4>();
+                test_bit_view(sub, 0x5, "1010");
+            }
         }
     }
     SECTION("no modification outside")
@@ -315,6 +333,21 @@ TEST_CASE("joined_bit_view")
 
     view[3] = true;
     test_bit_view(view, 0x3FF, "111111111100");
+
+    bit_view<int, 0, 4> sub_first = view.subview<0, 4>();
+    test_bit_view(sub_first, 0xF, "1111");
+
+    bit_view<int[2], 0, 4> sub_second = view.subview<4, 8>();
+    test_bit_view(sub_second, 0xF, "1111");
+
+    bit_view<int, 0, 4> sub_third = view.subview<8, 12>();
+    test_bit_view(sub_third, 0x3, "1100");
+
+    bit_view<int, 0, 2> sub_sub_first = view.subview<0, 2>();
+    test_bit_view(sub_sub_first, 0x3, "11");
+
+    auto second_third = view.subview<4, 10>();
+    test_bit_view(second_third, 0x3F, "111111");
 }
 
 TEST_CASE("bit_view convenience")

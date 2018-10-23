@@ -229,6 +229,17 @@ namespace tiny
         bit_view(bit_view<U, Begin, End> other) noexcept : pointer_(other.pointer_)
         {}
 
+        /// \returns A view to a subrange.
+        /// \notes The indices are in the range `[0, size())`, where `0` is the `Begin` bit.
+        template <std::size_t SubBegin, std::size_t SubEnd>
+        bit_view<Integer, Begin + SubBegin, Begin + SubEnd> subview() const noexcept
+        {
+            using result = bit_view<Integer, Begin + SubBegin, Begin + SubEnd>;
+            static_assert(begin() <= result::begin() && result::end() <= end(),
+                          "view not a subview");
+            return result(*reinterpret_cast<Integer*>(pointer_));
+        }
+
         /// \returns A boolean reference to the given bit.
         /// \requires `i < size()`.
         /// \notes The index is in the range `[0, size())`, where `0` is the `Begin` bit.
@@ -333,6 +344,17 @@ namespace tiny
         bit_view(bit_view<U[N], Begin, End> other) noexcept : pointer_(other.pointer_)
         {}
 
+        /// \returns A view to a subrange.
+        /// \notes The indices are in the range `[0, size())`, where `0` is the `Begin` bit.
+        template <std::size_t SubBegin, std::size_t SubEnd>
+        bit_view<Integer[N], Begin + SubBegin, Begin + SubEnd> subview() const noexcept
+        {
+            using result = bit_view<Integer[N], Begin + SubBegin, Begin + SubEnd>;
+            static_assert(begin() <= result::begin() && result::end() <= end(),
+                          "view not a subview");
+            return result(0, pointer_);
+        }
+
         /// \returns A boolean reference to the given bit.
         /// \requires `i < size()`.
         /// \notes The index is in the range `[0, size())`, where `0` is the `Begin` bit.
@@ -387,6 +409,8 @@ namespace tiny
                                                                                           bits);
         }
 
+        explicit bit_view(int, unsigned_integer* ptr) noexcept : pointer_(ptr) {}
+
         unsigned_integer* pointer_;
 
         template <typename, std::size_t, std::size_t>
@@ -405,20 +429,20 @@ namespace tiny
     template <class BitView, typename Integer, std::size_t Begin, std::size_t End>
     class bit_view<joined_bit_view_tag<BitView, Integer>, Begin, End>
     {
-        using is_const = std::integral_constant<bool, BitView::is_const::value
+        using is_const  = std::integral_constant<bool, BitView::is_const::value
                                                           || std::is_const<Integer>::value>;
+        using head_view = bit_view<Integer, Begin, End>;
 
     public:
         /// \returns The number of bits.
         static constexpr std::size_t size() noexcept
         {
-            return bit_view<Integer, Begin, End>::size() + BitView::size();
+            return head_view::size() + BitView::size();
         }
 
         /// \effects Creates a view from existing views.
         template <typename... TailArgs>
-        bit_view(bit_view<Integer, Begin, End> head, TailArgs... args) noexcept
-        : head_(head), tail_(args...)
+        bit_view(head_view head, TailArgs... args) noexcept : head_(head), tail_(args...)
         {}
 
         /// \effects Creates a view for the given parts.
@@ -435,6 +459,44 @@ namespace tiny
             bit_view<joined_bit_view_tag<OtherBitView, OtherInteger>, Begin, End> other) noexcept
         : head_(other.head_), tail_(other.tail_)
         {}
+
+    private:
+        template <std::size_t SubBegin, std::size_t SubEnd,
+                  typename = typename std::enable_if<SubEnd <= head_view::size()>::type>
+        bit_view<Integer, Begin + SubBegin, Begin + SubEnd> subview_impl(int) const noexcept
+        {
+            return head_.template subview<SubBegin, SubEnd>();
+        }
+        template <std::size_t SubBegin, std::size_t SubEnd,
+                  typename = typename std::enable_if<(SubBegin >= head_view::size())>::type>
+        auto subview_impl(int) const noexcept -> decltype(
+            std::declval<BitView>()
+                .template subview<SubBegin - head_view::size(), SubEnd - head_view::size()>())
+        {
+            return tail_
+                .template subview<SubBegin - head_view::size(), SubEnd - head_view::size()>();
+        }
+        template <std::size_t SubBegin, std::size_t SubEnd>
+        auto subview_impl(short) const noexcept -> bit_view<
+            joined_bit_view_tag<
+                decltype(std::declval<BitView>().template subview<0, SubEnd - head_view::size()>()),
+                Integer>,
+            Begin + SubBegin, End>
+        {
+            auto head_sub = head_.template subview<Begin + SubBegin, End>();
+            auto tail_sub = tail_.template subview<0, SubEnd - head_view::size()>();
+            return bit_view<joined_bit_view_tag<decltype(tail_sub), Integer>, head_view::begin(),
+                            head_view::end()>(head_sub, tail_sub);
+        }
+
+    public:
+        /// \returns A view to a subrange.
+        /// \notes The indices are in the range `[0, size())`, where `0` is the `Begin` bit.
+        template <std::size_t SubBegin, std::size_t SubEnd>
+        auto subview() const noexcept -> decltype(subview_impl<SubBegin, SubEnd>(0))
+        {
+            return subview_impl<SubBegin, SubEnd>(0);
+        }
 
         /// \returns A boolean reference to the given bit.
         /// \requires `i < size()`.

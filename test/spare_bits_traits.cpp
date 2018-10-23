@@ -106,7 +106,7 @@ enum class test_enum
     c,
     d,
 
-    count_,
+    unsigned_count_,
 };
 }
 
@@ -115,8 +115,7 @@ namespace foonathan
 namespace tiny
 {
     template <>
-    struct spare_bits_traits<test_enum>
-    : spare_bits_traits_enum<enum_traits_unsigned_count<test_enum, test_enum::count_>>
+    struct spare_bits_traits<test_enum> : spare_bits_traits_enum<test_enum>
     {};
 } // namespace tiny
 } // namespace foonathan

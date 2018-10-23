@@ -20,7 +20,9 @@ namespace tiny
     /// Specialize it for your own types,
     /// either by manually specifying the required members or by inheriting from the provided
     /// implementations.
-    template <typename Enum>
+    ///
+    /// \notes You are encouraged to use SFINAE on the second defaulted parameter.
+    template <typename Enum, typename = void>
     struct enum_traits
     {
     private:
@@ -77,12 +79,42 @@ namespace tiny
         static constexpr auto is_contiguous = true;
     };
 
+    /// Specialization for the enum traits for enums with an enumerator `_unsigned_max` or
+    /// `unsigned_max_`. It will treat it as an unsigned enum with that enumerator being the max
+    /// value.
+    ///
+    /// \group spec_unsigned
+    template <typename Enum>
+    struct enum_traits<Enum, decltype((void)Enum::_unsigned_max)>
+    : enum_traits_unsigned<Enum, Enum::_unsigned_max>
+    {};
+    /// \group spec_unsigned
+    template <typename Enum>
+    struct enum_traits<Enum, decltype((void)Enum::unsigned_max_)>
+    : enum_traits_unsigned<Enum, Enum::unsigned_max_>
+    {};
+
     /// Enum traits implementation that assumes the enum values are contiguous in the range `[0,
     /// Count]`.
     template <typename Enum, Enum Count>
     struct enum_traits_unsigned_count
     : enum_traits_unsigned<Enum,
                            Enum(static_cast<typename std::underlying_type<Enum>::type>(Count) - 1)>
+    {};
+
+    /// Specialization for the enum traits for enums with an enumerator `_unsigned_count` or
+    /// `unsigned_count_`. It will treat it as an unsigned enum with that enumerator specifying
+    /// the count.
+    ///
+    /// \group spec_unsigned_count
+    template <typename Enum>
+    struct enum_traits<Enum, decltype((void)Enum::_unsigned_count)>
+    : enum_traits_unsigned_count<Enum, Enum::_unsigned_count>
+    {};
+    /// \group spec_unsigned_count
+    template <typename Enum>
+    struct enum_traits<Enum, decltype((void)Enum::unsigned_count_)>
+    : enum_traits_unsigned_count<Enum, Enum::unsigned_count_>
     {};
 
     /// Enum traits implementation that assumes the enum values are contiguous in the range

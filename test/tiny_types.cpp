@@ -89,8 +89,9 @@ TEST_CASE("tiny_enum")
         b,
         c,
         d,
+        _unsigned_max = d,
     };
-    using type           = tiny_enum<enum_traits_unsigned<e, e::d>>;
+    using type           = tiny_enum<e>;
     tiny_storage storage = 0;
 
     auto cproxy = make_cproxy<type>(storage);

@@ -5,6 +5,7 @@
 #ifndef FOONATHAN_TINY_POINTER_VARIANT_IMPL_HPP_INCLUDED
 #define FOONATHAN_TINY_POINTER_VARIANT_IMPL_HPP_INCLUDED
 
+#include <foonathan/tiny/tiny_int.hpp>
 #include <foonathan/tiny/tiny_pointer_storage.hpp>
 
 namespace foonathan

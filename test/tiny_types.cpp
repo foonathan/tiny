@@ -6,6 +6,10 @@
 
 #include <catch.hpp>
 
+#include <foonathan/tiny/tiny_bool.hpp>
+#include <foonathan/tiny/tiny_enum.hpp>
+#include <foonathan/tiny/tiny_int.hpp>
+
 using namespace foonathan::tiny;
 
 namespace

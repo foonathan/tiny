@@ -18,6 +18,9 @@ set(header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/pointer_variant_impl.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/spare_bits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tombstone.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_bool.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_enum.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_int.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_pair.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_pointer_storage.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_type.hpp

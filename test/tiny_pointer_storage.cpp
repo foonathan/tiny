@@ -6,6 +6,8 @@
 
 #include <catch.hpp>
 
+#include <foonathan/tiny/tiny_int.hpp>
+
 using namespace foonathan::tiny;
 
 namespace

@@ -6,6 +6,9 @@
 
 #include <catch.hpp>
 
+#include <foonathan/tiny/tiny_bool.hpp>
+#include <foonathan/tiny/tiny_int.hpp>
+
 using namespace foonathan::tiny;
 
 TEST_CASE("tiny_type_storage")

@@ -5,6 +5,7 @@
 #ifndef FOONATHAN_TINY_TINY_POINTER_STORAGE_HPP_INCLUDED
 #define FOONATHAN_TINY_TINY_POINTER_STORAGE_HPP_INCLUDED
 
+#include <foonathan/tiny/detail/ilog2.hpp>
 #include <foonathan/tiny/tiny_type_storage.hpp>
 
 namespace foonathan

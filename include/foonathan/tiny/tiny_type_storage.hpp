@@ -55,7 +55,7 @@ namespace tiny
         {
             static constexpr auto found_count = 0;
             static constexpr auto offset      = 0;
-            using type                        = tiny_bool; // just some type fulfilling the concept
+            using type                        = tiny_tagged<void, void>;
         };
 
         template <typename Target, std::size_t CurIndex, std::size_t CurOffset, class Head,

@@ -27,6 +27,7 @@ set(tests
         tombstone_traits.cpp
         tiny_pair.cpp
         tiny_type.cpp
+        tiny_pointer_storage.cpp
         tiny_type_storage.cpp)
 
 add_executable(foonathan_tiny_test

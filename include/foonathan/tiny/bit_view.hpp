@@ -18,43 +18,68 @@ namespace tiny
 {
     namespace detail
     {
-        template <typename Integer>
+        //=== bit_reference ===//
         class bit_reference
         {
-            static_assert(std::is_integral<Integer>::value && std::is_unsigned<Integer>::value,
-                          "must be an unsigned integer type");
-
         public:
-            explicit bit_reference(Integer* ptr, std::size_t index) noexcept
-            : pointer_(ptr), index_(index)
-            {}
+            template <typename Integer>
+            explicit bit_reference(Integer* pointer, std::size_t index) noexcept
+            : modifier_([](void* ptr_, std::size_t index, bool value) {
+                  auto ptr = static_cast<Integer*>(ptr_);
+                  // clear
+                  *ptr &= ~(Integer(1) << index);
+                  // set
+                  *ptr |= Integer(value) << index;
+              }),
+              pointer_(pointer), index_(index), value_((*pointer >> index_) & Integer(1))
+            {
+                static_assert(std::is_integral<Integer>::value && std::is_unsigned<Integer>::value,
+                              "must be an unsigned integer type");
+            }
 
             bit_reference(bit_reference&&) noexcept = default;
+
             bit_reference& operator=(bit_reference&&) = delete;
 
             explicit operator bool() const noexcept
             {
-                return (*pointer_ >> index_) & Integer(1);
+                return value_;
             }
 
-            template <typename T = Integer>
             const bit_reference& operator=(bool value) const noexcept
             {
-                static_assert(!std::is_const<T>::value, "cannot assign in a const view");
-
-                // clear
-                *pointer_ &= ~(Integer(1) << index_);
-                // set
-                *pointer_ |= Integer(value) << index_;
-
+                value_ = value;
+                modifier_(pointer_, index_, value);
                 return *this;
             }
 
         private:
-            Integer*    pointer_;
-            std::size_t index_;
+            using modifier = void (*)(void*, std::size_t, bool);
+
+            modifier     modifier_;
+            void*        pointer_;
+            std::size_t  index_;
+            mutable bool value_;
         };
 
+        template <bool IsConst>
+        using bit_reference_for_impl =
+            typename std::conditional<IsConst, bool, bit_reference>::type;
+        template <typename Integer>
+        using bit_reference_for = bit_reference_for_impl<std::is_const<Integer>::value>;
+
+        template <typename Integer>
+        bit_reference make_bit_reference(Integer* pointer, std::size_t index) noexcept
+        {
+            return bit_reference(pointer, index);
+        }
+        template <typename Integer>
+        bool make_bit_reference(const Integer* pointer, std::size_t index) noexcept
+        {
+            return static_cast<bool>((*pointer >> index) & Integer(1));
+        }
+
+        //=== extracter ===//
         template <typename Integer>
         constexpr Integer get_mask(std::size_t begin, std::size_t length) noexcept
         {
@@ -172,19 +197,9 @@ namespace tiny
         static_assert(End == last_bit || End <= sizeof(Integer) * CHAR_BIT, "out of bounds");
 
         using unsigned_integer = typename std::make_unsigned<Integer>::type;
+        using is_const         = std::is_const<Integer>;
 
     public:
-        /// \effects Creates a view of the given integer.
-        explicit bit_view(Integer& integer) noexcept
-        : pointer_(reinterpret_cast<unsigned_integer*>(&integer))
-        {}
-
-        /// \effects Creates a view from the non-const version.
-        template <typename U,
-                  typename = typename std::enable_if<std::is_same<const U, Integer>::value>::type>
-        bit_view(bit_view<U, Begin, End> other) : pointer_(other.pointer_)
-        {}
-
         /// \returns The begin index.
         static constexpr std::size_t begin() noexcept
         {
@@ -203,13 +218,24 @@ namespace tiny
             return end() - begin();
         }
 
+        /// \effects Creates a view of the given integer.
+        explicit bit_view(Integer& integer) noexcept
+        : pointer_(reinterpret_cast<unsigned_integer*>(&integer))
+        {}
+
+        /// \effects Creates a view from the non-const version.
+        template <typename U,
+                  typename = typename std::enable_if<std::is_same<const U, Integer>::value>::type>
+        bit_view(bit_view<U, Begin, End> other) noexcept : pointer_(other.pointer_)
+        {}
+
         /// \returns A boolean reference to the given bit.
         /// \requires `i < size()`.
         /// \notes The index is in the range `[0, size())`, where `0` is the `Begin` bit.
-        detail::bit_reference<unsigned_integer> operator[](std::size_t i) const noexcept
+        detail::bit_reference_for<unsigned_integer> operator[](std::size_t i) const noexcept
         {
             DEBUG_ASSERT(i < size(), detail::precondition_handler{}, "index out of range");
-            return detail::bit_reference<unsigned_integer>(pointer_, Begin + i);
+            return detail::make_bit_reference(pointer_, Begin + i);
         }
 
         /// \returns An integer containing the viewed bits in the `size()` lower bits.
@@ -242,6 +268,8 @@ namespace tiny
     class bit_view<Integer[N], Begin, End>
     {
         static constexpr auto bits_per_element = sizeof(Integer) * CHAR_BIT;
+
+        using is_const = std::is_const<Integer>;
 
     public:
         /// \returns The begin index.
@@ -302,18 +330,18 @@ namespace tiny
         template <typename U,
                   typename
                   = typename std::enable_if<std::is_same<const U[N], Integer[N]>::value>::type>
-        bit_view(bit_view<U[N], Begin, End> other) : pointer_(other.pointer_)
+        bit_view(bit_view<U[N], Begin, End> other) noexcept : pointer_(other.pointer_)
         {}
 
         /// \returns A boolean reference to the given bit.
         /// \requires `i < size()`.
         /// \notes The index is in the range `[0, size())`, where `0` is the `Begin` bit.
-        detail::bit_reference<unsigned_integer> operator[](std::size_t i) const noexcept
+        detail::bit_reference_for<unsigned_integer> operator[](std::size_t i) const noexcept
         {
             DEBUG_ASSERT(i < size(), detail::precondition_handler{}, "index out of range");
             auto offset_i = i + begin();
-            return detail::bit_reference<unsigned_integer>(&pointer_[array_index(offset_i)],
-                                                           bit_index(offset_i));
+            return detail::make_bit_reference(&pointer_[array_index(offset_i)],
+                                              bit_index(offset_i));
         }
 
         /// \returns An integer containing the viewed bits in the `size()` lower bits.
@@ -365,6 +393,124 @@ namespace tiny
         friend class bit_view;
     };
 
+    /// Tag type to create a joined bit view.
+    template <class BitView, typename Integer>
+    struct joined_bit_view_tag
+    {};
+
+    /// Specialization for a bit view that views `[Begin, End)` in `Integer`,
+    /// then forwards to `BitView` for the remaining bits.
+    /// \notes It is not meant to be used directly,
+    /// use [tiny::joined_bit_view]() and [tiny::join_bit_views]() instead.
+    template <class BitView, typename Integer, std::size_t Begin, std::size_t End>
+    class bit_view<joined_bit_view_tag<BitView, Integer>, Begin, End>
+    {
+        using is_const = std::integral_constant<bool, BitView::is_const::value
+                                                          || std::is_const<Integer>::value>;
+
+    public:
+        /// \returns The number of bits.
+        static constexpr std::size_t size() noexcept
+        {
+            return bit_view<Integer, Begin, End>::size() + BitView::size();
+        }
+
+        /// \effects Creates a view from existing views.
+        template <typename... TailArgs>
+        bit_view(bit_view<Integer, Begin, End> head, TailArgs... args) noexcept
+        : head_(head), tail_(args...)
+        {}
+
+        /// \effects Creates a view for the given parts.
+        template <typename... Tail>
+        explicit bit_view(Integer& h, Tail&... tail) noexcept : head_(h), tail_(tail...)
+        {}
+
+        /// \effects Creates a view from the non-const version.
+        template <class OtherBitView, class OtherInteger,
+                  typename = typename std::enable_if<
+                      std::is_constructible<BitView, OtherBitView>::value
+                      && std::is_same<const OtherInteger, Integer>::value>::type>
+        bit_view(
+            bit_view<joined_bit_view_tag<OtherBitView, OtherInteger>, Begin, End> other) noexcept
+        : head_(other.head_), tail_(other.tail_)
+        {}
+
+        /// \returns A boolean reference to the given bit.
+        /// \requires `i < size()`.
+        /// \notes The index is in the range `[0, size())`, where `0` is the first bit.
+        detail::bit_reference_for_impl<is_const::value> operator[](std::size_t i) const noexcept
+        {
+            DEBUG_ASSERT(i < size(), detail::precondition_handler{}, "index out of range");
+            if (i < head_.size())
+                return detail::bit_reference_for_impl<is_const::value>(head_[i]);
+            else
+                return detail::bit_reference_for_impl<is_const::value>(tail_[i - head_.size()]);
+        }
+
+        /// \returns An integer containing the viewed bits in the `size()` lower bits.
+        std::uintmax_t extract() const noexcept
+        {
+            static_assert(size() <= sizeof(std::uintmax_t) * CHAR_BIT, "viewing too many bits");
+
+            auto head = head_.extract();
+            auto tail = tail_.extract();
+            return (tail << head_.size()) | head;
+        }
+
+        /// \effects Sets the viewed bits to the `size()` lower bits of `bits`.
+        /// \param T
+        /// \exclude
+        template <typename T = Integer>
+        void put(std::uintmax_t bits) const noexcept
+        {
+            static_assert(!std::is_const<T>::value, "cannot put in a view to const");
+            head_.put(bits);
+            tail_.put(bits >> head_.size());
+        }
+
+    private:
+        bit_view<Integer, Begin, End> head_;
+        BitView                       tail_;
+
+        template <typename, std::size_t, std::size_t>
+        friend class bit_view;
+    };
+
+    namespace detail
+    {
+        template <class... BitViews>
+        struct joined_bit_view_impl;
+
+        template <typename Integer, std::size_t Begin, std::size_t End, class FirstTail,
+                  class... RestTail>
+        struct joined_bit_view_impl<bit_view<Integer, Begin, End>, FirstTail, RestTail...>
+        {
+            using tail_view = typename joined_bit_view_impl<FirstTail, RestTail...>::type;
+            using type      = bit_view<joined_bit_view_tag<tail_view, Integer>, Begin, End>;
+        };
+
+        template <typename Integer, std::size_t Begin, std::size_t End>
+        struct joined_bit_view_impl<bit_view<Integer, Begin, End>>
+        {
+            using type = bit_view<Integer, Begin, End>;
+        };
+    } // namespace detail
+
+    /// A bit view that concatenates the other bit views in order.
+    ///
+    /// It first views the bits from the first view, then from the second, and so on.
+    template <class... BitViews>
+    using joined_bit_view = typename detail::joined_bit_view_impl<BitViews...>::type;
+
+    /// \returns A joined bit view from the given views.
+    template <class... BitViews>
+    joined_bit_view<BitViews...> join_bit_views(BitViews... views) noexcept
+    {
+        return {views...};
+    }
+
+    //=== bit_view convenience functions ===//
     /// \returns The specified bit view.
     template <std::size_t Begin, std::size_t End, typename Integer>
     bit_view<Integer, Begin, End> make_bit_view(Integer& i) noexcept

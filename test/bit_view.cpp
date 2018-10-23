@@ -15,8 +15,6 @@ using test_integer = std::uint32_t;
 template <typename T, std::size_t Begin, std::size_t End>
 void test_bit_view(bit_view<T, Begin, End> view, std::uintmax_t value, const std::string& str)
 {
-    REQUIRE(view.begin() == Begin);
-    REQUIRE(view.end() == End);
     REQUIRE(view.size() == str.size());
 
     std::string stored_str;
@@ -283,6 +281,40 @@ TEST_CASE("bit_view array")
             }
         }
     }
+}
+
+TEST_CASE("joined_bit_view")
+{
+    int array[2] = {0, 0};
+    int first    = 0;
+    int second   = 0;
+
+    using view_t
+        = joined_bit_view<bit_view<int, 0, 4>, bit_view<int[2], 0, 4>, bit_view<int, 0, 4>>;
+    using cview_t
+        = joined_bit_view<bit_view<const int, 0, 4>, bit_view<int[2], 0, 4>, bit_view<int, 0, 4>>;
+
+    view_t view(first, array, second);
+    test_bit_view(view, 0, "000000000000");
+
+    cview_t cview(view);
+    test_bit_view(cview, 0, "000000000000");
+
+    first = 0xFF;
+    test_bit_view(view, 0xF, "111100000000");
+
+    view.put(0x7F3);
+    test_bit_view(view, 0x7F3, "110011111110");
+    REQUIRE(first == 0xF3);
+    REQUIRE(array[0] == 0xF);
+    REQUIRE(second == 0x7);
+
+    view = join_bit_views(make_bit_view<0, 4>(second), make_bit_view<0, 4>(array),
+                          make_bit_view<0, 4>(first));
+    test_bit_view(view, 0x3F7, "111011111100");
+
+    view[3] = true;
+    test_bit_view(view, 0x3FF, "111111111100");
 }
 
 TEST_CASE("bit_view convenience")

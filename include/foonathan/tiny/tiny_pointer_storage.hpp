@@ -182,6 +182,16 @@ namespace tiny
         };
     } // namespace detail
 
+    /// The alignment of an object of the given type.
+    ///
+    /// If the type is [tiny::aligned_obj](), the alignment is the alignment specified there.
+    /// Otherwise it is `alignof(T)`.
+    template <typename T>
+    constexpr std::size_t alignment_of()
+    {
+        return detail::alignment_traits<T>::alignment;
+    }
+
     /// Stores a pointer to `T` and the specified tiny types.
     ///
     /// It will use the bits from the pointer that are always zero due to alignment to store the
@@ -192,8 +202,7 @@ namespace tiny
     template <typename T, typename... TinyTypes>
     class tiny_pointer_storage
     : public basic_tiny_type_storage<
-          detail::pointer_storage_policy<detail::alignment_traits<T>::alignment, TinyTypes...>,
-          TinyTypes...>
+          detail::pointer_storage_policy<alignment_of<T>(), TinyTypes...>, TinyTypes...>
     {
         static_assert(!std::is_same<typename std::remove_cv<T>::type, void>::value,
                       "void pointers have no alignment, wrap them in aligned_obj instead");
@@ -220,16 +229,14 @@ namespace tiny
         /// \effects Creates a storage where the pointer is `ptr` and the tiny types are created
         /// from their object types.
         tiny_pointer_storage(pointer_type ptr, typename TinyTypes::object_type... tiny) noexcept
-        : basic_tiny_type_storage<
-              detail::pointer_storage_policy<detail::alignment_traits<T>::alignment, TinyTypes...>,
-              TinyTypes...>(tiny...)
+        : basic_tiny_type_storage<detail::pointer_storage_policy<alignment_of<T>(), TinyTypes...>,
+                                  TinyTypes...>(tiny...)
         {
             pointer() = ptr;
         }
 
         /// \returns A proxy that behaves like a mutable reference to the stored pointer.
-        detail::pointer_proxy<value_type, detail::alignment_traits<T>::alignment, TinyTypes...>
-            pointer() noexcept
+        detail::pointer_proxy<value_type, alignment_of<T>(), TinyTypes...> pointer() noexcept
         {
             return {0, &this->storage_policy()};
         }

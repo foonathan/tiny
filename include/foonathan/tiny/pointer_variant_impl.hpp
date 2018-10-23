@@ -5,8 +5,7 @@
 #ifndef FOONATHAN_TINY_POINTER_VARIANT_IMPL_HPP_INCLUDED
 #define FOONATHAN_TINY_POINTER_VARIANT_IMPL_HPP_INCLUDED
 
-#include <foonathan/tiny/aligned_ptr.hpp>
-#include <foonathan/tiny/spare_bits.hpp>
+#include <foonathan/tiny/tiny_pointer_storage.hpp>
 
 namespace foonathan
 {
@@ -14,9 +13,6 @@ namespace tiny
 {
     namespace detail
     {
-        template <bool IsCompressed, typename... Ts>
-        struct spare_bits_traits_pointer_variant_impl;
-
         //=== variadic min ===//
         template <typename T>
         constexpr T min(T a)
@@ -36,72 +32,12 @@ namespace tiny
 
         //=== storage type ===//
         template <typename... Ts>
-        using pointer_variant_storage = aligned_ptr<const void, min(alignment_of<Ts>()...)>;
-
-        //=== variant tag storage ===//
-        template <bool IsCompressed>
-        struct pointer_variant_tag_impl;
-
-        template <>
-        struct pointer_variant_tag_impl<true>
-        {
-        protected:
-            using is_compressed = std::true_type;
-
-            template <typename AlignedPtr>
-            std::size_t get_tag(AlignedPtr ptr) const
-            {
-                return extract_spare_bits(ptr);
-            }
-
-            template <typename AlignedPtr>
-            void set_tag(AlignedPtr& ptr, std::size_t tag)
-            {
-                put_spare_bits(ptr, tag);
-            }
-
-            template <typename AlignedPtr>
-            AlignedPtr extract_ptr(const AlignedPtr& ptr) const
-            {
-                return extract_object(ptr);
-            }
-        };
-
-        template <>
-        struct pointer_variant_tag_impl<false>
-        {
-        protected:
-            using is_compressed = std::false_type;
-
-            template <typename AlignedPtr>
-            std::size_t get_tag(AlignedPtr) const
-            {
-                return tag_;
-            }
-
-            template <typename AlignedPtr>
-            void set_tag(AlignedPtr&, std::size_t tag)
-            {
-                tag_ = tag;
-            }
-
-            template <typename AlignedPtr>
-            AlignedPtr extract_ptr(const AlignedPtr& ptr) const
-            {
-                return ptr;
-            }
-
-        private:
-            std::size_t tag_;
-
-            template <bool, typename...>
-            friend struct spare_bits_traits_pointer_variant_impl;
-        };
+        using pointer_variant_value_type = aligned_obj<const void, min(alignment_of<Ts>()...)>;
 
         template <typename... Ts>
-        using pointer_variant_tag
-            = pointer_variant_tag_impl<(1u << spare_bits<detail::pointer_variant_storage<Ts...>>())
-                                       >= sizeof...(Ts)>;
+        using pointer_variant_storage
+            = tiny_pointer_storage<pointer_variant_value_type<Ts...>,
+                                   tiny_unsigned<detail::ilog2_ceil(sizeof...(Ts)), std::size_t>>;
 
         //=== variant tag calculation ===//
         template <typename T, typename... Ts>
@@ -144,10 +80,12 @@ namespace tiny
     /// It is just a low-level implementation helper for an actual variant.
     /// A proper variant type should be built on top of it.
     template <typename... Ts>
-    class pointer_variant_impl : detail::pointer_variant_tag<Ts...>
+    class pointer_variant_impl
     {
+        using storage_type = detail::pointer_variant_storage<Ts...>;
+
     public:
-        using is_compressed = typename detail::pointer_variant_tag<Ts...>::is_compressed;
+        using is_compressed = typename storage_type::is_compressed;
 
         /// The tag of this element type.
         ///
@@ -176,7 +114,7 @@ namespace tiny
         /// \effects Resets the variant to `nullptr`.
         void reset(std::nullptr_t) noexcept
         {
-            ptr_ = nullptr;
+            storage_.pointer() = nullptr;
         }
 
         /// \effects Resets the variant to a pointer to the given object.
@@ -186,8 +124,8 @@ namespace tiny
         {
             static_assert(typename tag_of<T>::is_valid{}, "type cannot be stored in variant");
 
-            ptr_ = detail::pointer_variant_storage<Ts...>(ptr);
-            this->set_tag(ptr_, tag_of<T>::value);
+            storage_.pointer()        = ptr;
+            storage_.template at<0>() = tag_of<T>::value;
         }
 
         //=== accessors ===//
@@ -195,7 +133,7 @@ namespace tiny
         /// i.e. it is not `nullptr`.
         bool has_value() const noexcept
         {
-            return extract_object(ptr_) != nullptr;
+            return storage_.pointer() != nullptr;
         }
 
         /// \returns The tag value of the currently active element type,
@@ -203,7 +141,7 @@ namespace tiny
         std::size_t tag() const noexcept
         {
             if (has_value())
-                return this->get_tag(ptr_);
+                return storage_.template at<0>();
             else
                 return std::size_t(-1);
         }
@@ -211,11 +149,11 @@ namespace tiny
         /// \returns The untyped pointer.
         const void* get() const noexcept
         {
-            return extract_object(ptr_).get();
+            return storage_.pointer();
         }
 
         /// \returns The typed pointer to `T`.
-        /// \requires It must contain a pointer to the given type.
+        /// \requires It must contain a non-null pointer to the given type.
         template <typename T>
         T* pointer_to() const noexcept
         {
@@ -227,73 +165,8 @@ namespace tiny
         }
 
     private:
-        detail::pointer_variant_storage<Ts...> ptr_;
-
-        friend detail::spare_bits_traits_pointer_variant_impl<is_compressed::value, Ts...>;
+        storage_type storage_;
     };
-
-    namespace detail
-    {
-        template <typename... Ts>
-        struct spare_bits_traits_pointer_variant_impl<true, Ts...>
-        {
-        private:
-            using impl_traits     = spare_bits_traits<detail::pointer_variant_storage<Ts...>>;
-            using spare_bits_view = bit_view<std::uintmax_t, detail::ilog2_ceil(sizeof...(Ts)),
-                                             impl_traits::spare_bits>;
-
-        public:
-            static constexpr auto spare_bits = spare_bits_view::size();
-
-            static void clear(pointer_variant_impl<Ts...>& object) noexcept
-            {
-                impl_traits::clear(object.ptr_);
-            }
-
-            static std::uintmax_t extract(pointer_variant_impl<Ts...> object) noexcept
-            {
-                return impl_traits::extract(object.ptr_);
-            }
-
-            static void put(pointer_variant_impl<Ts...>& object, std::uintmax_t bits) noexcept
-            {
-                impl_traits::put(object.ptr_, bits);
-            }
-        };
-
-        template <typename... Ts>
-        struct spare_bits_traits_pointer_variant_impl<false, Ts...>
-        {
-        private:
-            using spare_bits_view
-                = bit_view<std::size_t, detail::ilog2_ceil(sizeof...(Ts)), last_bit>;
-
-        public:
-            static constexpr auto spare_bits = spare_bits_view::size();
-
-            static void clear(pointer_variant_impl<Ts...>& object) noexcept
-            {
-                put(object, 0);
-            }
-
-            static std::uintmax_t extract(pointer_variant_impl<Ts...> object) noexcept
-            {
-                return spare_bits_view(object.tag_).extract();
-            }
-
-            static void put(pointer_variant_impl<Ts...>& object, std::uintmax_t bits) noexcept
-            {
-                spare_bits_view(object.tag_).put(bits);
-            }
-        };
-    } // namespace detail
-
-    /// Exposes additional spare bits of the [tiny::pointer_variant_impl]().
-    template <typename... Ts>
-    struct spare_bits_traits<pointer_variant_impl<Ts...>>
-    : detail::spare_bits_traits_pointer_variant_impl<
-          pointer_variant_impl<Ts...>::is_compressed::value, Ts...>
-    {};
 } // namespace tiny
 } // namespace foonathan
 

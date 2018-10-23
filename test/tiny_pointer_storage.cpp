@@ -16,34 +16,34 @@ void verify_pointer_assignment(Storage& s, unsigned tiny_value)
     alignas(16) typename Storage::value_type array[4];
 
     s.pointer() = array;
-    REQUIRE(s.template at<0>() == tiny_value);
+    REQUIRE(s.tiny() == tiny_value);
     REQUIRE(s.pointer() == array);
 
     s.pointer() += 2;
-    REQUIRE(s.template at<0>() == tiny_value);
+    REQUIRE(s.tiny() == tiny_value);
     REQUIRE(s.pointer() == array + 2);
 
     s.pointer() -= 1;
-    REQUIRE(s.template at<0>() == tiny_value);
+    REQUIRE(s.tiny() == tiny_value);
     REQUIRE(s.pointer() == array + 1);
 
     auto ptr = s.pointer()++;
-    REQUIRE(s.template at<0>() == tiny_value);
+    REQUIRE(s.tiny() == tiny_value);
     REQUIRE(s.pointer() == array + 2);
     REQUIRE(ptr == array + 1);
 
     ptr = ++s.pointer();
-    REQUIRE(s.template at<0>() == tiny_value);
+    REQUIRE(s.tiny() == tiny_value);
     REQUIRE(s.pointer() == array + 3);
     REQUIRE(ptr == array + 3);
 
     ptr = s.pointer()--;
-    REQUIRE(s.template at<0>() == tiny_value);
+    REQUIRE(s.tiny() == tiny_value);
     REQUIRE(s.pointer() == array + 2);
     REQUIRE(ptr == array + 3);
 
     ptr = --s.pointer();
-    REQUIRE(s.template at<0>() == tiny_value);
+    REQUIRE(s.tiny() == tiny_value);
     REQUIRE(s.pointer() == array + 1);
     REQUIRE(ptr == array + 1);
 }
@@ -57,15 +57,15 @@ TEST_CASE("tiny_pointer_storage")
         REQUIRE(storage::is_compressed::value);
 
         storage s;
-        REQUIRE(s.at<0>() == 0);
+        REQUIRE(s.tiny() == 0);
         REQUIRE(s.pointer() == nullptr);
 
-        s.at<0>() = 3;
-        REQUIRE(s.at<0>() == 3);
+        s.tiny() = 3;
+        REQUIRE(s.tiny() == 3);
         REQUIRE(s.pointer() == nullptr);
 
         const auto& cs = s;
-        REQUIRE(cs.at<0>() == 3);
+        REQUIRE(cs.tiny() == 3);
         REQUIRE(cs.pointer() == nullptr);
 
         verify_pointer_assignment(s, 3);
@@ -76,20 +76,20 @@ TEST_CASE("tiny_pointer_storage")
         REQUIRE(storage::is_compressed::value);
 
         storage s;
-        REQUIRE(s.at<0>() == 0);
+        REQUIRE(s.tiny() == 0);
         REQUIRE(s.pointer() == nullptr);
 
-        s.at<0>() = 7;
-        REQUIRE(s.at<0>() == 7);
+        s.tiny() = 7;
+        REQUIRE(s.tiny() == 7);
         REQUIRE(s.pointer() == nullptr);
 
         const auto& cs = s;
-        REQUIRE(cs.at<0>() == 7);
+        REQUIRE(cs.tiny() == 7);
         REQUIRE(cs.pointer() == nullptr);
 
         alignas(8) int value = 0;
         s.pointer()          = &value;
-        REQUIRE(s.at<0>() == 7);
+        REQUIRE(s.tiny() == 7);
         REQUIRE(s.pointer() == &value);
     }
     SECTION("not compressed")
@@ -98,15 +98,15 @@ TEST_CASE("tiny_pointer_storage")
         REQUIRE(!storage::is_compressed::value);
 
         storage s;
-        REQUIRE(s.at<0>() == 0);
+        REQUIRE(s.tiny() == 0);
         REQUIRE(s.pointer() == nullptr);
 
-        s.at<0>() = 7;
-        REQUIRE(s.at<0>() == 7);
+        s.tiny() = 7;
+        REQUIRE(s.tiny() == 7);
         REQUIRE(s.pointer() == nullptr);
 
         const auto& cs = s;
-        REQUIRE(cs.at<0>() == 7);
+        REQUIRE(cs.tiny() == 7);
         REQUIRE(cs.pointer() == nullptr);
 
         verify_pointer_assignment(s, 7);

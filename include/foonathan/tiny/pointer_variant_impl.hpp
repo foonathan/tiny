@@ -35,9 +35,11 @@ namespace tiny
         using pointer_variant_value_type = aligned_obj<const void, min(alignment_of<Ts>()...)>;
 
         template <typename... Ts>
+        using pointer_variant_tag = tiny_unsigned<detail::ilog2_ceil(sizeof...(Ts)), std::size_t>;
+
+        template <typename... Ts>
         using pointer_variant_storage
-            = tiny_pointer_storage<pointer_variant_value_type<Ts...>,
-                                   tiny_unsigned<detail::ilog2_ceil(sizeof...(Ts)), std::size_t>>;
+            = tiny_pointer_storage<pointer_variant_value_type<Ts...>, pointer_variant_tag<Ts...>>;
 
         //=== variant tag calculation ===//
         template <typename T, typename... Ts>
@@ -124,8 +126,8 @@ namespace tiny
         {
             static_assert(typename tag_of<T>::is_valid{}, "type cannot be stored in variant");
 
-            storage_.pointer()        = ptr;
-            storage_.template at<0>() = tag_of<T>::value;
+            storage_.pointer() = ptr;
+            storage_.tiny()    = tag_of<T>::value;
         }
 
         //=== accessors ===//
@@ -141,7 +143,7 @@ namespace tiny
         std::size_t tag() const noexcept
         {
             if (has_value())
-                return storage_.template at<0>();
+                return storage_.tiny();
             else
                 return std::size_t(-1);
         }

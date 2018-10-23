@@ -243,6 +243,24 @@ namespace tiny
             return get_impl<std::integral_constant<std::size_t, I>>();
         }
 
+        /// Convenience access for a single tiny type.
+        /// \returns `at<0>()`.
+        /// \requires Only one tiny type must be stored.
+        /// \group tiny
+        template <std::size_t Dummy = sizeof...(TinyTypes)>
+        auto tiny() noexcept -> proxy_of<std::integral_constant<std::size_t, 0>>
+        {
+            static_assert(Dummy == 1, "only allowed for 1 tiny type");
+            return at<0>();
+        }
+        /// \group tiny
+        template <std::size_t Dummy = sizeof...(TinyTypes)>
+        auto tiny() const noexcept -> cproxy_of<std::integral_constant<std::size_t, 0>>
+        {
+            static_assert(Dummy == 1, "only allowed for 1 tiny type");
+            return at<0>();
+        }
+
     protected:
         ~basic_tiny_type_storage() noexcept = default;
 

@@ -6,7 +6,7 @@
 #define FOONATHAN_TINY_TINY_POINTER_STORAGE_HPP_INCLUDED
 
 #include <foonathan/tiny/detail/ilog2.hpp>
-#include <foonathan/tiny/tiny_type_storage.hpp>
+#include <foonathan/tiny/tiny_storage.hpp>
 
 namespace foonathan
 {
@@ -77,8 +77,8 @@ namespace tiny
                 return storage_.view();
             }
 
-            friend basic_tiny_type_storage<pointer_storage_policy<Alignment, TinyTypes...>,
-                                           TinyTypes...>;
+            friend basic_tiny_storage<pointer_storage_policy<Alignment, TinyTypes...>,
+                                      TinyTypes...>;
 
         public:
             template <typename T>
@@ -199,9 +199,9 @@ namespace tiny
     /// Pass [tiny::aligned_obj]() instead of `T` if you know that the object you need to point to
     /// has a given over-alignment.
     template <typename T, typename... TinyTypes>
-    class tiny_pointer_storage
-    : public basic_tiny_type_storage<
-          detail::pointer_storage_policy<alignment_of<T>(), TinyTypes...>, TinyTypes...>
+    class pointer_tiny_storage
+    : public basic_tiny_storage<detail::pointer_storage_policy<alignment_of<T>(), TinyTypes...>,
+                                TinyTypes...>
     {
         static_assert(!std::is_same<typename std::remove_cv<T>::type, void>::value,
                       "void pointers have no alignment, wrap them in aligned_obj instead");
@@ -213,23 +213,23 @@ namespace tiny
         /// Default constructor.
         /// \effects Creates a storage where the pointer is `nullptr` and the tiny types have all
         /// bits set to zero.
-        tiny_pointer_storage() noexcept
+        pointer_tiny_storage() noexcept
         {
             pointer() = nullptr;
         }
 
         /// \effects Creates a storage where the pointer is `ptr` and the tiny types have all bits
         /// set to zero.
-        explicit tiny_pointer_storage(pointer_type ptr) noexcept
+        explicit pointer_tiny_storage(pointer_type ptr) noexcept
         {
             pointer() = ptr;
         }
 
         /// \effects Creates a storage where the pointer is `ptr` and the tiny types are created
         /// from their object types.
-        tiny_pointer_storage(pointer_type ptr, typename TinyTypes::object_type... tiny) noexcept
-        : basic_tiny_type_storage<detail::pointer_storage_policy<alignment_of<T>(), TinyTypes...>,
-                                  TinyTypes...>(tiny...)
+        pointer_tiny_storage(pointer_type ptr, typename TinyTypes::object_type... tiny) noexcept
+        : basic_tiny_storage<detail::pointer_storage_policy<alignment_of<T>(), TinyTypes...>,
+                             TinyTypes...>(tiny...)
         {
             pointer() = ptr;
         }

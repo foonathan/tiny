@@ -151,7 +151,7 @@ namespace tiny
     /// Then the implementation inherits from this class providing additional member functions as
     /// needed.
     template <class TinyStoragePolicy, class... TinyTypes>
-    class basic_tiny_type_storage : TinyStoragePolicy
+    class basic_tiny_storage : TinyStoragePolicy
     {
         template <class Type, std::size_t Offset>
         using proxy = decltype(
@@ -197,15 +197,15 @@ namespace tiny
         //=== constructors ===//
         /// Default constructor.
         /// \effects Initializes all tiny types to the value corresponding to all zeroes.
-        basic_tiny_type_storage() noexcept
+        basic_tiny_storage() noexcept
         {
             this->storage_view().put(0);
         }
 
         /// Object constructor.
         /// \effects Initializes all tiny types from the corresponding object type.
-        basic_tiny_type_storage(typename TinyTypes::object_type... objects) noexcept
-        : basic_tiny_type_storage(detail::make_index_sequence<sizeof...(TinyTypes)>{}, objects...)
+        basic_tiny_storage(typename TinyTypes::object_type... objects) noexcept
+        : basic_tiny_storage(detail::make_index_sequence<sizeof...(TinyTypes)>{}, objects...)
         {}
 
         //=== access ===//
@@ -262,7 +262,7 @@ namespace tiny
         }
 
     protected:
-        ~basic_tiny_type_storage() noexcept = default;
+        ~basic_tiny_storage() noexcept = default;
 
         /// \returns The storage policy.
         /// \group storage_policy
@@ -278,8 +278,8 @@ namespace tiny
 
     private:
         template <std::size_t... Indices>
-        basic_tiny_type_storage(detail::index_sequence<Indices...>,
-                                typename TinyTypes::object_type... objects)
+        basic_tiny_storage(detail::index_sequence<Indices...>,
+                           typename TinyTypes::object_type... objects)
         {
             bool for_each[] = {(at<Indices>() = objects, true)..., true};
             (void)for_each;
@@ -309,19 +309,19 @@ namespace tiny
 
             storage_type storage_;
 
-            friend basic_tiny_type_storage<embedded_storage_policy<TinyTypes...>, TinyTypes...>;
+            friend basic_tiny_storage<embedded_storage_policy<TinyTypes...>, TinyTypes...>;
         };
     } // namespace tiny_storage_detail
 
     /// A compressed tuple of tiny types.
     template <class... TinyTypes>
-    class tiny_type_storage
-    : public basic_tiny_type_storage<tiny_storage_detail::embedded_storage_policy<TinyTypes...>,
-                                     TinyTypes...>
+    class tiny_storage
+    : public basic_tiny_storage<tiny_storage_detail::embedded_storage_policy<TinyTypes...>,
+                                TinyTypes...>
     {
     public:
-        using basic_tiny_type_storage<tiny_storage_detail::embedded_storage_policy<TinyTypes...>,
-                                      TinyTypes...>::basic_tiny_type_storage;
+        using basic_tiny_storage<tiny_storage_detail::embedded_storage_policy<TinyTypes...>,
+                                 TinyTypes...>::basic_tiny_storage;
     };
 } // namespace tiny
 } // namespace foonathan

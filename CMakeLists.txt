@@ -15,8 +15,9 @@ set(header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/bit_view.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/enum_traits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/optional_impl.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/pointer_variant_impl.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/padding_traits.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/pointer_tiny_storage.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/pointer_variant_impl.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/spare_bits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tombstone.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_bool.hpp
@@ -24,9 +25,8 @@ set(header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_flag_set.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_int.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_pair.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_pointer_storage.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_storage.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_type.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_type_storage.hpp
     )
 add_library(foonathan_tiny INTERFACE)
 target_sources(foonathan_tiny INTERFACE ${detail_header_files} ${header_files})

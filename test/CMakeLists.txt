@@ -19,16 +19,16 @@ if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/catch.hpp)
 endif()
 
 set(tests
-        bit_view.cpp
-        optional_impl.cpp
-        padding_traits.cpp
-        poiner_variant_impl.cpp
-        spare_bits_traits.cpp
-        tombstone_traits.cpp
-        tiny_pair.cpp
-        tiny_types.cpp
-        tiny_pointer_storage.cpp
-        tiny_type_storage.cpp)
+    bit_view.cpp
+    optional_impl.cpp
+    pointer_tiny_storage.cpp
+    padding_traits.cpp
+    poiner_variant_impl.cpp
+    spare_bits_traits.cpp
+    tombstone_traits.cpp
+    tiny_pair.cpp
+    tiny_types.cpp
+    tiny_storage.cpp)
 
 add_executable(foonathan_tiny_test
                test.cpp

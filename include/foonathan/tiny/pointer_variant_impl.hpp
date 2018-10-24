@@ -5,8 +5,8 @@
 #ifndef FOONATHAN_TINY_POINTER_VARIANT_IMPL_HPP_INCLUDED
 #define FOONATHAN_TINY_POINTER_VARIANT_IMPL_HPP_INCLUDED
 
+#include <foonathan/tiny/pointer_tiny_storage.hpp>
 #include <foonathan/tiny/tiny_int.hpp>
-#include <foonathan/tiny/tiny_pointer_storage.hpp>
 
 namespace foonathan
 {
@@ -40,7 +40,7 @@ namespace tiny
 
         template <typename... Ts>
         using pointer_variant_storage
-            = tiny_pointer_storage<pointer_variant_value_type<Ts...>, pointer_variant_tag<Ts...>>;
+            = pointer_tiny_storage<pointer_variant_value_type<Ts...>, pointer_variant_tag<Ts...>>;
 
         //=== variant tag calculation ===//
         template <typename T, typename... Ts>

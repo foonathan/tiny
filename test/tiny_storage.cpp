@@ -2,7 +2,7 @@
 // This file is subject to the license terms in the LICENSE file
 // found in the top-level directory of this distribution.
 
-#include <foonathan/tiny/tiny_type_storage.hpp>
+#include <foonathan/tiny/tiny_storage.hpp>
 
 #include <catch.hpp>
 
@@ -11,14 +11,14 @@
 
 using namespace foonathan::tiny;
 
-TEST_CASE("tiny_type_storage")
+TEST_CASE("tiny_storage")
 {
     struct first
     {};
     struct second
     {};
-    using storage = tiny_type_storage<tiny_unsigned<7>, tiny_tagged<first, tiny_bool>,
-                                      tiny_tagged<second, tiny_bool>>;
+    using storage = tiny_storage<tiny_unsigned<7>, tiny_tagged<first, tiny_bool>,
+                                 tiny_tagged<second, tiny_bool>>;
 
     storage     s;
     const auto& cs = s;

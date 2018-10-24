@@ -2,7 +2,7 @@
 // This file is subject to the license terms in the LICENSE file
 // found in the top-level directory of this distribution.
 
-#include <foonathan/tiny/tiny_pointer_storage.hpp>
+#include <foonathan/tiny/pointer_tiny_storage.hpp>
 
 #include <catch.hpp>
 
@@ -51,11 +51,11 @@ void verify_pointer_assignment(Storage& s, unsigned tiny_value)
 }
 } // namespace
 
-TEST_CASE("tiny_pointer_storage")
+TEST_CASE("pointer_tiny_storage")
 {
     SECTION("compressed")
     {
-        using storage = tiny_pointer_storage<std::uint32_t, tiny_unsigned<2>>;
+        using storage = pointer_tiny_storage<std::uint32_t, tiny_unsigned<2>>;
         REQUIRE(storage::is_compressed::value);
 
         storage s;
@@ -74,7 +74,7 @@ TEST_CASE("tiny_pointer_storage")
     }
     SECTION("compressed custom alignment")
     {
-        using storage = tiny_pointer_storage<aligned_obj<int, 8>, tiny_unsigned<3>>;
+        using storage = pointer_tiny_storage<aligned_obj<int, 8>, tiny_unsigned<3>>;
         REQUIRE(storage::is_compressed::value);
 
         storage s;
@@ -96,7 +96,7 @@ TEST_CASE("tiny_pointer_storage")
     }
     SECTION("not compressed")
     {
-        using storage = tiny_pointer_storage<std::uint32_t, tiny_unsigned<3>>;
+        using storage = pointer_tiny_storage<std::uint32_t, tiny_unsigned<3>>;
         REQUIRE(!storage::is_compressed::value);
 
         storage s;
@@ -115,7 +115,7 @@ TEST_CASE("tiny_pointer_storage")
     }
     SECTION("big not compressed")
     {
-        using storage = tiny_pointer_storage<
+        using storage = pointer_tiny_storage<
             std::uint32_t, tiny_unsigned<2 + sizeof(std::uintptr_t) * CHAR_BIT / 2, std::uint64_t>,
             tiny_unsigned<sizeof(std::uintptr_t) * CHAR_BIT / 2, std::uint64_t>>;
         REQUIRE(!storage::is_compressed::value);

@@ -354,10 +354,10 @@ TEST_CASE("bit_view convenience")
 {
     unsigned value = 0;
 
-    put_bits<0, 1>(value, 1);
+    value = put_bits<0, 1>(value, 1);
     REQUIRE(value == 1);
 
-    put_bits<1, 3>(value, 7);
+    value = put_bits<1, 3>(value, 7);
     REQUIRE(value == 7);
 
     REQUIRE(extract_bits<1, 3>(value) == 3);
@@ -367,9 +367,9 @@ TEST_CASE("bit_view convenience")
     REQUIRE(are_only_bits<0, 5>(value));
     REQUIRE(are_only_bits<0, last_bit>(value));
 
-    clear_bits<1, 2>(value);
+    value = clear_bits<1, 2>(value);
     REQUIRE(value == 5);
 
-    clear_other_bits<1, 2>(value);
+    value = clear_other_bits<1, 2>(value);
     REQUIRE(value == 0);
 }

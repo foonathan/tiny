@@ -53,6 +53,24 @@ namespace tiny
                 return *this;
             }
 
+            friend bool operator==(const bit_reference& lhs, bool rhs) noexcept
+            {
+                return !!lhs == rhs;
+            }
+            friend bool operator!=(const bit_reference& lhs, bool rhs) noexcept
+            {
+                return !!lhs != rhs;
+            }
+
+            friend bool operator==(bool lhs, const bit_reference& rhs) noexcept
+            {
+                return lhs == !!rhs;
+            }
+            friend bool operator!=(bool lhs, const bit_reference& rhs) noexcept
+            {
+                return lhs != !!rhs;
+            }
+
         private:
             using modifier = void (*)(void*, std::size_t, bool);
 
@@ -589,11 +607,12 @@ namespace tiny
     }
 
     /// Puts bits into the specified range of bits.
-    /// \effects Same as `bit_view<Integer, Begin, End>(i).put(bits)`.
+    /// \returns Same as `bit_view<Integer, Begin, End>(i).put(bits)`.
     template <std::size_t Begin, std::size_t End, typename Integer>
-    void put_bits(Integer& i, std::uintmax_t bits) noexcept
+    Integer put_bits(Integer i, std::uintmax_t bits) noexcept
     {
         bit_view<Integer, Begin, End>(i).put(bits);
+        return i;
     }
 
     /// Checks that the range of bits is zero.
@@ -613,17 +632,17 @@ namespace tiny
 
     /// Clears all bits in the specified range by setting them to zero.
     template <std::size_t Begin, std::size_t End, typename Integer>
-    void clear_bits(Integer& i) noexcept
+    Integer clear_bits(Integer i) noexcept
     {
-        put_bits<Begin, End>(i, 0);
+        return put_bits<Begin, End>(i, 0);
     }
 
     /// Clears all bits not in the specified range by setting them to zero.
     template <std::size_t Begin, std::size_t End, typename Integer>
-    void clear_other_bits(Integer& i) noexcept
+    Integer clear_other_bits(Integer i) noexcept
     {
-        clear_bits<0, Begin>(i);
-        clear_bits<End, last_bit>(i);
+        i = clear_bits<0, Begin>(i);
+        return clear_bits<End, last_bit>(i);
     }
 } // namespace tiny
 } // namespace foonathan

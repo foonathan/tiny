@@ -94,9 +94,7 @@ namespace tiny
             template <typename T>
             T* get_pointer() const noexcept
             {
-                auto int_value = storage_.ptr;
-                clear_bits<0, compressed_size>(int_value);
-                return reinterpret_cast<T*>(int_value);
+                return reinterpret_cast<T*>(clear_bits<0, compressed_size>(storage_.ptr));
             }
         };
 

@@ -205,7 +205,7 @@ namespace tiny
                     // and clear any overflow bits
                     auto absolute_value = static_cast<unsigned_type>(~rep + 1);
                     // clear any overflow bits
-                    clear_other_bits<0, Bits>(absolute_value);
+                    absolute_value = clear_other_bits<0, Bits>(absolute_value);
                     // return absolute value properly negated
                     return static_cast<object_type>(-static_cast<object_type>(absolute_value));
                 }

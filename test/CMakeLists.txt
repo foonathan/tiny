@@ -21,6 +21,7 @@ endif()
 set(tests
         bit_view.cpp
         optional_impl.cpp
+        padding_traits.cpp
         poiner_variant_impl.cpp
         spare_bits_traits.cpp
         tombstone_traits.cpp

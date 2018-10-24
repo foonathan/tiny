@@ -8,6 +8,7 @@
 
 #include <foonathan/tiny/tiny_bool.hpp>
 #include <foonathan/tiny/tiny_enum.hpp>
+#include <foonathan/tiny/tiny_flag_set.hpp>
 #include <foonathan/tiny/tiny_int.hpp>
 
 using namespace foonathan::tiny;
@@ -233,5 +234,104 @@ TEST_CASE("tiny_int")
 
         proxy %= 2;
         verify_int(proxy, 1);
+    }
+}
+
+namespace
+{
+enum class test_flags
+{
+    a,
+    b,
+    c,
+
+    flag_count_,
+};
+
+template <class Proxy>
+void verify_flag_set(Proxy proxy, bool a_set, bool b_set, bool c_set)
+{
+    REQUIRE(proxy[test_flags::a] == a_set);
+    REQUIRE(proxy[test_flags::b] == b_set);
+    REQUIRE(proxy[test_flags::c] == c_set);
+
+    REQUIRE(proxy.get() == std::uintmax_t((c_set << 2) | (b_set << 1) | (a_set << 0)));
+
+    REQUIRE(proxy.is_set(test_flags::a) == a_set);
+    REQUIRE(proxy.is_set(test_flags::b) == b_set);
+    REQUIRE(proxy.is_set(test_flags::c) == c_set);
+
+    REQUIRE(proxy.any() == (a_set || b_set || c_set));
+    REQUIRE(proxy.all() == (a_set && b_set && c_set));
+    REQUIRE(proxy.none() == (!a_set && !b_set && !c_set));
+
+    REQUIRE(proxy == proxy);
+    REQUIRE_FALSE(proxy != proxy);
+
+    if (proxy.any())
+    {
+        REQUIRE(proxy != flags<test_flags>());
+        REQUIRE(flags<test_flags>() != proxy);
+        REQUIRE_FALSE(proxy == flags<test_flags>());
+        REQUIRE_FALSE(flags<test_flags>() == proxy);
+    }
+    else
+    {
+        REQUIRE(proxy == flags<test_flags>());
+        REQUIRE(flags<test_flags>() == proxy);
+        REQUIRE_FALSE(proxy != flags<test_flags>());
+        REQUIRE_FALSE(flags<test_flags>() != proxy);
+    }
+}
+} // namespace
+
+TEST_CASE("tiny_flag_set")
+{
+    tiny_storage storage = 0;
+
+    auto cproxy = make_cproxy<tiny_flag_set<test_flags>>(storage);
+    verify_flag_set(cproxy, false, false, false);
+
+    auto proxy = make_proxy<tiny_flag_set<test_flags>>(storage);
+    verify_flag_set(proxy, false, false, false);
+
+    proxy = flags(test_flags::a, test_flags::c);
+    verify_flag_set(proxy, true, false, true);
+
+    SECTION("single flag operation")
+    {
+        proxy[test_flags::b] = true;
+        verify_flag_set(proxy, true, true, true);
+
+        proxy.reset(test_flags::a);
+        verify_flag_set(proxy, false, true, true);
+
+        proxy.set(test_flags::a);
+        verify_flag_set(proxy, true, true, true);
+
+        proxy.toggle(test_flags::a);
+        verify_flag_set(proxy, false, true, true);
+
+        proxy.toggle(test_flags::a);
+        verify_flag_set(proxy, true, true, true);
+    }
+    SECTION("multi flag operation")
+    {
+        proxy.toggle_all();
+        verify_flag_set(proxy, false, true, false);
+
+        proxy.toggle_all();
+        verify_flag_set(proxy, true, false, true);
+
+        SECTION("set_all")
+        {
+            proxy.set_all();
+            verify_flag_set(proxy, true, true, true);
+        }
+        SECTION("reset_all")
+        {
+            proxy.reset_all();
+            verify_flag_set(proxy, false, false, false);
+        }
     }
 }

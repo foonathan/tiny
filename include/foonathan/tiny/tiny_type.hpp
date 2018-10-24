@@ -27,7 +27,7 @@ namespace tiny
         /// `BitView` is a [tiny::bit_view]() viewing the `bit_size()` bits of storage the object occupies.
         /// It should implement the required functions to be a stand-in for `object_type`,
         /// but at the very least it should provide a conversion operator that converts the view into the object type
-        /// and an assignment operator that changes the bits to store a new object.
+        /// and must provide an assignment operator from the object type that changes the bits to store a new object.
         template <class BitView>
         class proxy
         {

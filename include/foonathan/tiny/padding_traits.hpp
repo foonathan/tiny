@@ -13,7 +13,7 @@ namespace foonathan
 namespace tiny
 {
     //=== padding_traits ===//
-    /// Information about the padding bytes of a type.
+    /// Information about the padding bits of a type.
     ///
     /// A specialization usually simply inherits from [tiny::padding_traits_aggregate]().
     template <typename T>
@@ -38,12 +38,17 @@ namespace tiny
         }
     };
 
-    /// \returns The amount of padding bytes in the given type.
+    /// \returns The padding view type of the given type.
+    /// \notes Its `const`-qualification depends on the cv of `T`.
+    template <typename T>
+    using padding_view_t = decltype(
+        padding_traits<typename std::remove_cv<T>::type>::padding_view(std::declval<T&>()));
+
+    /// \returns The amount of padding bits in the given type.
     template <typename T>
     constexpr std::size_t padding_of() noexcept
     {
-        static_assert(padding_traits<T>::is_specialized, "type must specialize the padding traits");
-        return decltype(padding_traits<T>::padding_view(std::declval<T>()))::size();
+        return padding_view_t<T>::size();
     }
 
     //=== padding_traits_aggregate ===//

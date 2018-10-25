@@ -15,6 +15,7 @@ set(header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/bit_view.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/enum_traits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/optional_impl.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/padding_tiny_storage.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/padding_traits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/pointer_tiny_storage.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/pointer_variant_impl.hpp

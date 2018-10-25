@@ -199,7 +199,7 @@ namespace tiny
         /// \effects Initializes all tiny types to the value corresponding to all zeroes.
         basic_tiny_storage() noexcept
         {
-            this->storage_view().put(0);
+            clear_bits(this->storage_view());
         }
 
         /// Object constructor.
@@ -207,6 +207,12 @@ namespace tiny
         basic_tiny_storage(typename TinyTypes::object_type... objects) noexcept
         : basic_tiny_storage(detail::make_index_sequence<sizeof...(TinyTypes)>{}, objects...)
         {}
+
+        basic_tiny_storage(basic_tiny_storage&&)      = default;
+        basic_tiny_storage(const basic_tiny_storage&) = default;
+
+        basic_tiny_storage& operator=(const basic_tiny_storage&) = default;
+        basic_tiny_storage& operator=(basic_tiny_storage&&) = default;
 
         //=== access ===//
         /// Array access operator.

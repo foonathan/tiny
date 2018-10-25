@@ -98,6 +98,8 @@ namespace tiny
         }
 
         //=== extracter ===//
+        constexpr auto max_extract_bits = sizeof(std::uintmax_t) * CHAR_BIT;
+
         template <typename Integer>
         constexpr Integer get_mask(std::size_t begin, std::size_t length) noexcept
         {
@@ -398,8 +400,7 @@ namespace tiny
         /// \returns An integer containing the viewed bits in the `size()` lower bits.
         std::uintmax_t extract() const noexcept
         {
-            static_assert(size() <= sizeof(std::uintmax_t) * CHAR_BIT,
-                          "too many bits to extract at once");
+            static_assert(size() <= detail::max_extract_bits, "too many bits to extract at once");
             return extract(std::integral_constant<bool, begin_index != end_index>{});
         }
 
@@ -409,8 +410,7 @@ namespace tiny
         template <typename T = Integer>
         void put(std::uintmax_t bits) const noexcept
         {
-            static_assert(size() <= sizeof(std::uintmax_t) * CHAR_BIT,
-                          "too many bits to put at once");
+            static_assert(size() <= detail::max_extract_bits, "too many bits to put at once");
             static_assert(!std::is_const<T>::value, "cannot put in a view to const");
             put(std::integral_constant<bool, begin_index != end_index>{}, bits);
         }
@@ -555,8 +555,7 @@ namespace tiny
         /// \returns An integer containing the viewed bits in the `size()` lower bits.
         std::uintmax_t extract() const noexcept
         {
-            static_assert(size() <= sizeof(std::uintmax_t) * CHAR_BIT,
-                          "too many bits to extract at once");
+            static_assert(size() <= detail::max_extract_bits, "too many bits to extract at once");
 
             auto head = head_.extract();
             auto tail = tail_.extract();
@@ -569,8 +568,7 @@ namespace tiny
         template <typename T = Integer>
         void put(std::uintmax_t bits) const noexcept
         {
-            static_assert(size() <= sizeof(std::uintmax_t) * CHAR_BIT,
-                          "too many bits to put at once");
+            static_assert(size() <= detail::max_extract_bits, "too many bits to put at once");
             static_assert(!std::is_const<T>::value, "cannot put in a view to const");
             head_.put(bits);
             tail_.put(bits >> head_.size());
@@ -597,7 +595,10 @@ namespace tiny
             using joined    = bit_view<joined_bit_view_tag<tail_view, Integer>, Begin, End>;
             using only_head = bit_view<Integer, Begin, End>;
 
-            using type = typename std::conditional<tail_view::size() != 0, joined, only_head>::type;
+            using type = typename std::conditional<
+                tail_view::size() != 0,
+                typename std::conditional<only_head::size() != 0, joined, tail_view>::type,
+                only_head>::type;
         };
 
         template <typename Integer, std::size_t Begin, std::size_t End>
@@ -623,7 +624,7 @@ namespace tiny
 
         template <typename Head, typename... Tail>
         auto join_bit_views_impl(Head h, Tail... tail) noexcept ->
-            typename std::enable_if<joined_bit_view<Tail...>::size() != 0,
+            typename std::enable_if<Head::size() != 0 && joined_bit_view<Tail...>::size() != 0,
                                     joined_bit_view<Head, Tail...>>::type
         {
             auto tail_view = join_bit_views_impl(tail...);
@@ -631,7 +632,21 @@ namespace tiny
         }
         template <typename Head, typename... Tail>
         auto join_bit_views_impl(Head h, Tail...) noexcept ->
-            typename std::enable_if<joined_bit_view<Tail...>::size() == 0,
+            typename std::enable_if<Head::size() != 0 && joined_bit_view<Tail...>::size() == 0,
+                                    joined_bit_view<Head, Tail...>>::type
+        {
+            return h;
+        }
+        template <typename Head, typename... Tail>
+        auto join_bit_views_impl(Head, Tail... tail) noexcept ->
+            typename std::enable_if<Head::size() == 0 && joined_bit_view<Tail...>::size() != 0,
+                                    joined_bit_view<Head, Tail...>>::type
+        {
+            return join_bit_views_impl(tail...);
+        }
+        template <typename Head, typename... Tail>
+        auto join_bit_views_impl(Head h, Tail...) noexcept ->
+            typename std::enable_if<Head::size() == 0 && joined_bit_view<Tail...>::size() == 0,
                                     joined_bit_view<Head, Tail...>>::type
         {
             return h;
@@ -698,6 +713,72 @@ namespace tiny
     {
         i = clear_bits<0, Begin>(i);
         return clear_bits<End, last_bit>(i);
+    }
+
+    namespace detail
+    {
+        template <class BitView, class OtherBitView>
+        auto copy_bits_impl(BitView, OtherBitView) ->
+            typename std::enable_if<BitView::size() == 0>::type
+        {}
+
+        template <class BitView, class OtherBitView>
+        auto copy_bits_impl(BitView dest, OtherBitView src) noexcept ->
+            typename std::enable_if<(BitView::size() > 0)
+                                    && BitView::size() <= max_extract_bits>::type
+        {
+            dest.put(src.extract());
+        }
+
+        template <class BitView, class OtherBitView>
+        auto copy_bits_impl(std::false_type, BitView dest, OtherBitView src) noexcept ->
+            typename std::enable_if<(BitView::size() > max_extract_bits)>::type
+        {
+            dest.template subview<0, max_extract_bits>().put(
+                src.template subview<0, max_extract_bits>().extract());
+            copy_bits_impl(dest.template subview<max_extract_bits, last_bit>(),
+                           src.template subview<max_extract_bits, last_bit>());
+        }
+    } // namespace detail
+
+    /// \effects Copies the bits from `src` to `dest`.
+    template <typename Integer, std::size_t Begin, std::size_t End, typename OtherInteger,
+              std::size_t OtherBegin, std::size_t OtherEnd>
+    void copy_bits(bit_view<Integer, Begin, End>                dest,
+                   bit_view<OtherInteger, OtherBegin, OtherEnd> src) noexcept
+    {
+        static_assert(decltype(dest)::size() == decltype(src)::size(),
+                      "bit views must have the same sizes");
+        detail::copy_bits_impl(dest, src);
+    }
+
+    namespace detail
+    {
+        template <class BitView>
+        auto clear_bits_impl(BitView) -> typename std::enable_if<BitView::size() == 0>::type
+        {}
+
+        template <class BitView>
+        auto clear_bits_impl(BitView view) ->
+            typename std::enable_if<(BitView::size() > 0)
+                                    && BitView::size() <= max_extract_bits>::type
+        {
+            view.put(0);
+        }
+
+        template <class BitView>
+        auto clear_bits_impl(BitView view) ->
+            typename std::enable_if<(BitView::size() > max_extract_bits)>::type
+        {
+            view.template subview<0, max_extract_bits>().put(0);
+            clear_bits_impl(view.template subview<max_extract_bits, last_bit>());
+        }
+    } // namespace detail
+
+    template <typename Integer, std::size_t Begin, std::size_t End>
+    void clear_bits(bit_view<Integer, Begin, End> view) noexcept
+    {
+        detail::clear_bits_impl(view);
     }
 } // namespace tiny
 } // namespace foonathan

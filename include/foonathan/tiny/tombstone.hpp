@@ -8,138 +8,395 @@
 #include <cstddef>
 #include <new>
 
-#include <foonathan/tiny/spare_bits.hpp>
+#include <foonathan/tiny/padding_traits.hpp>
+#include <foonathan/tiny/tiny_bool.hpp>
+#include <foonathan/tiny/tiny_enum.hpp>
+#include <foonathan/tiny/tiny_int.hpp>
+#include <foonathan/tiny/tiny_storage.hpp>
 
 namespace foonathan
 {
 namespace tiny
 {
-    //=== tombstone traits implementations ===//
-    /// The default implementation of the tombstone traits, i.e. no tombstones.
-    template <typename T>
-    struct tombstone_traits_default
+    /// \exclude
+    namespace tombstone_detail
     {
-        /// Whether or not the tombstones overlap with the spare bits.
-        ///
-        /// If this is `true`, an object where the spare bits are used is falsely identified as a
-        /// tombstone.
-        using overlaps_spare_bits = std::false_type;
+        template <typename T>
+        union storage_type_trivial
+        {
+            char uninitialized;
+            T    object;
 
-        /// The number of tombstones in the type.
+            storage_type_trivial() noexcept {}
+            storage_type_trivial(const storage_type_trivial&) = delete;
+            storage_type_trivial& operator=(const storage_type_trivial&) = delete;
+            ~storage_type_trivial() noexcept                             = default;
+        };
+
+        template <typename T>
+        union storage_type_non_trivial
+        {
+            char uninitialized;
+            T    object;
+
+            storage_type_non_trivial() noexcept {}
+            storage_type_non_trivial(const storage_type_non_trivial&) = delete;
+            storage_type_non_trivial& operator=(const storage_type_non_trivial&) = delete;
+            ~storage_type_non_trivial() noexcept {}
+        };
+
+        template <typename T>
+        using storage_type_for =
+            typename std::conditional<std::is_trivially_destructible<T>::value,
+                                      storage_type_trivial<T>, storage_type_non_trivial<T>>::type;
+    } // namespace tombstone_detail
+
+    /// The tombstone traits of a given type.
+    ///
+    /// The default implementation provides no tombstones.
+    template <typename T, typename = void>
+    struct tombstone_traits
+    {
+        /// The object type, i.e. `T`.
+        ///
+        /// This is the type that is conceptually stored.
+        using object_type = T;
+
+        /// The type that is the storage for both tombstone and object type.
+        ///
+        /// It must be a type that is default constructible,
+        /// "trivially" destructible and doesn't need to be copy constructible or assignable.
+        ///
+        /// \notes The destructor of this type shouldn't actually destroy something.
+        /// But it would be reasonable to use a `union` of `T` and some dummy member.
+        /// However, the destructor then has to be defined as a no-op, so isn't actually trivial
+        /// anymore. But it still does nothing.
+        using storage_type = tombstone_detail::storage_type_for<T>;
+
+        /// A reference to the object type.
+        ///
+        /// This is either a plain old reference or a proxy.
+        using reference       = T&;
+        using const_reference = const T&;
+
+        /// The number of tombstones that are available.
         static constexpr std::size_t tombstone_count = 0u;
 
-        /// Creates the tombstone with the specified index.
-        /// \effects Creates an object of some type with the same size and alignment as `T` at the
-        /// given memory address, where the bit pattern uniquely identifies the given tombstone.
-        /// \requires `tombstone_index < tombstone_count` and `memory` points to empty memory
-        /// suitable for a `T`. \notes Tombstones must be trivial types.
-        static void create_tombstone(void* memory, std::size_t tombstone_index) noexcept
+        /// \effects Creates the tombstone with the specified index in the storage.
+        /// \requires The storage must currently contain nothing and `tombstone_index <
+        /// tombstone_count`.
+        static void create_tombstone(storage_type& storage, std::size_t tombstone_index) noexcept
         {
-            (void)memory;
+            (void)storage;
             (void)tombstone_index;
         }
 
-        /// Calculates the tombstone index of the object stored at the given address.
-        /// \returns The index of the given tombstone, if `memory` points to an address where the
-        /// bit pattern corresponds to a tombstone. A value `>= tombstone_count` otherwise.
-        /// \requires `memory` points to memory where either a valid `T` object has been constructed
-        /// or a tombstone.
-        static std::size_t tombstone_index(const void* memory) noexcept
+        /// \effects Creates an object in the storage.
+        /// \requires The storage must currently contain nothing or a tombstone.
+        template <typename... Args>
+        static void create_object(storage_type& storage, Args&&... args)
         {
-            (void)memory;
-            return std::size_t(-1);
+            ::new (static_cast<void*>(&storage.object)) T(static_cast<Args>(args)...);
+        }
+
+        /// \effects Destroys the object currently stored in the storage.
+        /// \requires An object must currently be stored.
+        static void destroy_object(storage_type& storage) noexcept
+        {
+            storage.object.~T();
+        }
+
+        /// \returns The index of the currently stored tombstone, or an invalid index if an object
+        /// is stored. \requires The storage must either contain an object or a tombstone and not be
+        /// in the uninitialized state.
+        static std::size_t get_tombstone(const storage_type& storage) noexcept
+        {
+            (void)storage;
+            return 0u;
+        }
+
+        /// \returns A reference to the object currently stored in the storage.
+        /// \requires The storage must store an object.
+        /// \group get_object
+        static reference get_object(storage_type& storage) noexcept
+        {
+            return storage.object;
+        }
+        /// \group get_object
+        static const_reference get_object(const storage_type& storage) noexcept
+        {
+            return storage.object;
         }
     };
 
-    /// A tombstone traits implementation that uses the spare bits to mark the tombstones.
-    /// \requires The type must be default constructible and provide spare bits.
-    /// \notes If this implementation is used tombstones cannot be distinguished from objects where
-    /// the spare bits are used.
-    template <typename T>
-    struct tombstone_traits_spare_bits
+    //=== tombstone_traits using padding ===//
+    /// \exclude
+    namespace tombstone_detail
     {
-        static_assert(std::is_default_constructible<T>::value,
-                      "type must be default constructible");
-        static_assert(spare_bits<T>() > 0u, "not enough spare bits");
-
-        using overlaps_spare_bits = std::true_type;
-
-        // 2^spare_bits - 1 tombstones are available (all 0 is used for the real object)
-        static constexpr std::size_t tombstone_count = (1u << spare_bits<T>()) - 1u;
-
-        static void create_tombstone(void* memory, std::size_t tombstone_index) noexcept
+        template <typename T, class Tombstone>
+        union padded_storage_type_trivial
         {
-            // create a new object
-            auto ptr = ::new (memory) T();
-            // and fill the spare bits
-            put_spare_bits(*ptr, tombstone_index + 1u);
+            Tombstone tombstone;
+            T         object;
+
+            padded_storage_type_trivial() noexcept {}
+            padded_storage_type_trivial(const padded_storage_type_trivial&) = delete;
+            padded_storage_type_trivial& operator=(const padded_storage_type_trivial&) = delete;
+            ~padded_storage_type_trivial() noexcept                                    = default;
+        };
+
+        template <typename T, class Tombstone>
+        union padded_storage_type_non_trivial
+        {
+            Tombstone tombstone;
+            T         object;
+
+            padded_storage_type_non_trivial() noexcept {}
+            padded_storage_type_non_trivial(const padded_storage_type_non_trivial&) = delete;
+            padded_storage_type_non_trivial& operator=(const padded_storage_type_non_trivial&)
+                = delete;
+            ~padded_storage_type_non_trivial() noexcept {}
+        };
+
+        template <typename T, class Tombstone>
+        using padded_storage_type_for =
+            typename std::conditional<std::is_trivially_destructible<T>::value,
+                                      padded_storage_type_trivial<T, Tombstone>,
+                                      padded_storage_type_non_trivial<T, Tombstone>>::type;
+    } // namespace tombstone_detail
+
+    /// A tombstone traits implementation that uses the padding bits to mark the tombstones.
+    ///
+    /// `Padded` is the type that will get a tombstone,
+    /// `TombstoneType` is a layout compatible, nothrow default-constructible and trivially copyable
+    /// type that has a specialization of the padding traits.
+    template <typename T, class TombstoneType = T>
+    class tombstone_traits_padded
+    {
+        static_assert(is_layout_compatible<T, TombstoneType>::value,
+                      "TombstoneType must be layout compatible");
+        static_assert(std::is_default_constructible<TombstoneType>::value,
+                      "TombstoneType must be nothrow default constructible");
+        static_assert(std::is_trivially_copyable<TombstoneType>::value,
+                      "TombstoneType must be trivially copyable");
+        static_assert(padding_bit_size<TombstoneType>() > 0, "doesn't actually have padding");
+
+        static constexpr std::size_t tombstone_bits
+            = padding_bit_size<TombstoneType>() > sizeof(std::size_t) * CHAR_BIT - 1
+                  ? sizeof(std::size_t) * CHAR_BIT - 1
+                  : padding_bit_size<TombstoneType>();
+
+    public:
+        using object_type = T;
+
+        using storage_type = tombstone_detail::padded_storage_type_for<T, TombstoneType>;
+
+        using reference       = T&;
+        using const_reference = const T&;
+
+        // - 1 because all zero is the actual object
+        static constexpr std::size_t tombstone_count = (1ull << tombstone_bits) - 1;
+
+        static void create_tombstone(storage_type& storage, std::size_t tombstone_index) noexcept
+        {
+            storage.tombstone = {};
+            padding_of(storage.tombstone)
+                .template subview<0, tombstone_bits>()
+                .put(tombstone_index + 1);
         }
 
-        static std::size_t tombstone_index(const void* memory) noexcept
+        template <typename... Args>
+        static void create_object(storage_type& storage, Args&&... args)
         {
-            // precondition: memory points to tombstone or T
-            // as a tombstone is a T, we can always cast to a T
-            auto ptr = static_cast<const T*>(memory);
-            // if extract_spare_bits() == 0: we overflow and return something > tombstone_count
-            // otherwise we return the correct index
-            return extract_spare_bits(*ptr) - 1u;
+            ::new (static_cast<void*>(&storage.object)) T(static_cast<Args>(args)...);
+            padding_of(storage.tombstone).template subview<0, tombstone_bits>().put(0);
+        }
+
+        static void destroy_object(storage_type& storage) noexcept
+        {
+            storage.object.~T();
+        }
+
+        static std::size_t get_tombstone(const storage_type& storage) noexcept
+        {
+            auto data
+                = padding_of(storage.tombstone).template subview<0, tombstone_bits>().extract();
+            // if data == 0: no tombstone
+            // else: data - 1 is index
+            // we can unconditionally subtract one, if zero, it overflows and we have an invalid
+            // index
+            return data - 1;
+        }
+
+        static reference get_object(storage_type& storage) noexcept
+        {
+            return storage.object;
+        }
+        static const_reference get_object(const storage_type& storage) noexcept
+        {
+            return storage.object;
         }
     };
 
-    //=== tombstone traits ===//
-    /// The tombstone traits of a given type.
-    ///
-    /// It will use the spare bits if the type has them and is default constructible,
-    /// otherwise the type has no tombstones.
+    /// Specialization of the tombstone traits for types with padding bits and that are valid
+    /// tombstone types.
     template <typename T>
-    struct tombstone_traits
-    : std::conditional<std::is_default_constructible<T>::value && (spare_bits<T>() > 0u),
-                       tombstone_traits_spare_bits<T>, tombstone_traits_default<T>>::type
+    struct tombstone_traits<T,
+                            typename std::enable_if<(padding_bit_size<T>() > 0)
+                                                    && std::is_default_constructible<T>::value
+                                                    && std::is_trivially_copyable<T>::value>::type>
+    : tombstone_traits_padded<T>
     {};
 
-    //=== tombstone traits algorithm ===//
-    /// Whether or not the tombstones overlap with the spare bits.
-    ///
-    /// If this is `true`, an object where the spare bits are used is falsely identified as a
-    /// tombstone.
-    template <typename T>
-    using tombstone_overlaps_spare_bits = typename tombstone_traits<T>::overlaps_spare_bits;
-
-    /// \returns The number of tombstones in the given type.
-    template <typename T>
-    constexpr std::size_t tombstone_count() noexcept
+    //=== tombstone traits for tiny types ===//
+    /// Specialization of the tombstone traits for tiny types.
+    template <class TinyType>
+    struct tombstone_traits<TinyType, typename std::enable_if<is_tiny_type<TinyType>::value>::type>
     {
-        return tombstone_traits<T>::tombstone_count;
-    }
+    private:
+        static_assert(TinyType::bit_size() < CHAR_BIT, "TinyType is not actually tiny");
 
-    /// Creates the tombstone with the specified index.
-    /// \effects Creates an object of some type with the same size and alignment as `T` at the given
-    /// memory address, where the bit pattern uniquely identifies the given tombstone. \requires
-    /// `tombstone_index < tombstone_count` and `memory` points to empty memory suitable for a `T`.
-    template <typename T>
-    void create_tombstone(void* memory, std::size_t tombstone_index) noexcept
-    {
-        DEBUG_ASSERT(tombstone_index < tombstone_count<T>(), detail::precondition_handler{});
-        tombstone_traits<T>::create_tombstone(memory, tombstone_index);
-    }
+        using tombstone_type = tiny_unsigned<CHAR_BIT - TinyType::bit_size(), std::size_t>;
 
-    /// Calculates the tombstone index of the object stored at the given address.
-    /// \returns The index of the given tombstone, if `memory` points to an address where the bit
-    /// pattern corresponds to a tombstone. A value `>= tombstone_count` otherwise. \requires
-    /// `memory` points to memory where either a valid `T` object has been constructed or a
-    /// tombstone.
-    template <typename T>
-    std::size_t tombstone_index(const void* memory) noexcept
-    {
-        return tombstone_traits<T>::tombstone_index(memory);
-    }
+    public:
+        using object_type = typename TinyType::object_type;
 
-    /// \returns Whether or not the object stored at the given address is a tombstone.
-    template <typename T>
-    bool is_tombstone(const void* memory) noexcept
+        using storage_type = tiny_storage<TinyType, tombstone_type>;
+
+        using reference       = decltype(std::declval<storage_type&>().template at<0>());
+        using const_reference = decltype(std::declval<const storage_type&>().template at<0>());
+
+        static constexpr std::size_t tombstone_count = (1ull << tombstone_type::bit_size()) - 1u;
+
+        static void create_tombstone(storage_type& storage, std::size_t tombstone_index) noexcept
+        {
+            storage.template at<1>() = tombstone_index + 1;
+        }
+
+        template <typename... Args>
+        static void create_object(storage_type& storage, Args&&... args)
+        {
+            storage.template at<0>() = object_type(static_cast<Args>(args)...);
+            storage.template at<1>() = 0;
+        }
+
+        static void destroy_object(storage_type&) noexcept {}
+
+        static std::size_t get_tombstone(const storage_type& storage) noexcept
+        {
+            // if data == 0: no tombstone
+            // else: data - 1 is index
+            // we can unconditionally subtract one, if zero, it overflows and we have an invalid
+            // index
+            return storage.template at<1>() - 1;
+        }
+
+        static reference get_object(storage_type& storage) noexcept
+        {
+            return storage.template at<0>();
+        }
+        static const_reference get_object(const storage_type& storage) noexcept
+        {
+            return storage.template at<0>();
+        }
+    };
+
+    /// Specialization of the tombstone traits for `bool` by forwarding to `tiny_bool`.
+    template <>
+    struct tombstone_traits<bool> : tombstone_traits<tiny_bool>
+    {};
+
+    namespace tombstone_detail
     {
-        return tombstone_index<T>(memory) < tombstone_count<T>();
-    }
+        template <typename Enum>
+        struct enable_enum_impl
+        {
+            using type = typename std::enable_if<enum_traits<Enum>::is_contiguous
+                                                 && enum_traits<Enum>::min() == Enum(0)>::type;
+        };
+
+        template <typename Enum>
+        using enable_enum = typename std::conditional<std::is_enum<Enum>::value,
+                                                      enable_enum_impl<Enum>, void>::type::type;
+    } // namespace tombstone_detail
+
+    /// Specialization of the tombstone traits for unsigned contiguous enums by forwarding to
+    /// `tiny_enum`.
+    template <typename Enum>
+    struct tombstone_traits<Enum, tombstone_detail::enable_enum<Enum>>
+    : tombstone_traits<tiny_enum<Enum>>
+    {};
+
+    //=== tombstone_traits for pointers ===//
+    /// \exclude
+    template <typename T, std::size_t Alignment>
+    struct aligned_obj;
+
+    namespace tombstone_detail
+    {
+        template <typename Pointer, std::size_t Alignment>
+        struct tombstone_traits_ptr
+        {
+            using object_type  = Pointer;
+            using storage_type = std::uintptr_t;
+
+            using reference       = object_type&;
+            using const_reference = const object_type&;
+
+            // alignment zero is valid
+            static constexpr std::size_t tombstone_count = Alignment - 1;
+
+            static void create_tombstone(storage_type& storage,
+                                         std::size_t   tombstone_index) noexcept
+            {
+                storage = static_cast<std::uintptr_t>(tombstone_index + 1);
+            }
+
+            static void create_object(storage_type& storage, object_type ptr) noexcept
+            {
+                storage = reinterpret_cast<std::uintptr_t>(ptr);
+            }
+            static void destroy_object(storage_type&) noexcept {}
+
+            static std::size_t get_tombstone(storage_type storage) noexcept
+            {
+                // storage % Alignment: just the lower order bits
+                // valid pointer: 0, subtract one overflows and we have an invalid index
+                // otherwise: tombstone index + 1
+                return (storage % Alignment) - 1;
+            }
+
+            static reference get_object(storage_type& storage) noexcept
+            {
+                return reinterpret_cast<reference>(storage);
+            }
+            static const_reference get_object(const storage_type& storage) noexcept
+            {
+                return reinterpret_cast<reference>(storage);
+            }
+        };
+
+        template <typename T, std::size_t Alignment, std::size_t Dummy>
+        struct tombstone_traits_ptr<aligned_obj<T, Alignment>*, Dummy>
+        : tombstone_traits_ptr<T*, Alignment>
+        {};
+
+        template <typename T>
+        struct is_cv_void : std::is_same<typename std::remove_cv<T>::type, void>
+        {};
+
+        template <typename T>
+        struct is_void_ptr : is_cv_void<typename std::remove_pointer<T>::type>
+        {};
+    } // namespace tombstone_detail
+
+    template <typename Pointer>
+    struct tombstone_traits<
+        Pointer, typename std::enable_if<std::is_pointer<Pointer>::value
+                                         && !tombstone_detail::is_void_ptr<Pointer>::value>::type>
+    : tombstone_detail::tombstone_traits_ptr<Pointer,
+                                             alignof(typename std::remove_pointer<Pointer>::type)>
+    {};
 } // namespace tiny
 } // namespace foonathan
 

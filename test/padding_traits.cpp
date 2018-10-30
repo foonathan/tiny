@@ -64,7 +64,8 @@ TEST_CASE("padding_traits_aggregate")
                                                 FOONATHAN_TINY_MEMBER(foo, b)>;
 
         foo                                        obj;
-        bit_view<unsigned char[sizeof(foo)], 0, 0> padding = traits::padding_view(obj);
+        bit_view<unsigned char[sizeof(foo)], 0, 0> padding
+            = traits::padding_view(reinterpret_cast<unsigned char*>(&obj));
         REQUIRE(padding.size() == 0);
     }
     SECTION("single padding")
@@ -84,7 +85,7 @@ TEST_CASE("padding_traits_aggregate")
         REQUIRE(obj.a == 0);
         REQUIRE(obj.b == 0);
 
-        bit_view<unsigned char[sizeof(foo)], 8, 16> padding = traits::padding_view(obj);
+        bit_view<unsigned char[sizeof(foo)], 8, 16> padding = traits::padding_view(byte_ptr);
         REQUIRE(padding.size() == 8);
         REQUIRE(padding.extract() == 0);
 
@@ -118,7 +119,7 @@ TEST_CASE("padding_traits_aggregate")
 
         joined_bit_view<bit_view<unsigned char[sizeof(foo)], 8, 32>,
                         bit_view<unsigned char[sizeof(foo)], 136, sizeof(foo)* CHAR_BIT>>
-            padding = traits::padding_view(obj);
+            padding = traits::padding_view(byte_ptr);
         REQUIRE(padding.size() == (3 + 0 + 0 + 7) * CHAR_BIT);
         REQUIRE(padding.subview<0, 3 * CHAR_BIT>().extract() == 0);
         REQUIRE(padding.subview<3 * CHAR_BIT, last_bit>().extract() == 0);
@@ -140,8 +141,44 @@ TEST_CASE("padding_traits_aggregate")
         for (auto i = 0; i != 7; ++i)
             REQUIRE(byte_ptr[2 + 2 * 64 / CHAR_BIT] == 0xFF);
 
-        const auto& cobj     = obj;
-        auto        cpadding = traits::padding_view(cobj);
-        cpadding             = padding;
+        auto cpadding = traits::padding_view(const_cast<const unsigned char*>(byte_ptr));
+        cpadding      = padding;
     }
+}
+
+namespace
+{
+struct aggregate_padding
+{
+    std::uint8_t  a;
+    std::uint16_t b;
+};
+
+struct compatible
+{
+    std::uint8_t  a;
+    std::uint16_t b;
+};
+} // namespace
+
+namespace foonathan
+{
+namespace tiny
+{
+    template <>
+    struct padding_traits<aggregate_padding>
+    : padding_traits_aggregate<FOONATHAN_TINY_MEMBER(aggregate_padding, a),
+                               FOONATHAN_TINY_MEMBER(aggregate_padding, b)>
+    {};
+
+    template <>
+    struct padding_traits<compatible>
+    : padding_traits_layout_compatible<compatible, aggregate_padding>
+    {};
+} // namespace tiny
+} // namespace foonathan
+
+TEST_CASE("padding_traits layout compatible")
+{
+    REQUIRE(padding_bit_size<compatible>() == 8);
 }

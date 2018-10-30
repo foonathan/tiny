@@ -13,80 +13,80 @@ namespace foonathan
 {
 namespace tiny
 {
-    template <typename T>
-    class optional_impl;
-
-    namespace detail
+    /// \exclude
+    namespace opt_detail
     {
-        template <bool HasTombstone, typename T>
-        class optional_has_value_impl;
-
         template <typename T>
-        class optional_has_value_impl<true, T>
+        struct compressed_optional
         {
-        protected:
-            void store_value() noexcept {}
+            using traits = tombstone_traits<T>;
+            typename traits::storage_type storage;
 
-            void store_none(void* storage) noexcept
-            {
-                create_tombstone<T>(storage, empty_tombstone());
-            }
-
-            bool has_value_impl(const void* storage) const noexcept
-            {
-                return tombstone_index<T>(storage) != empty_tombstone();
-            }
-
-        private:
             static constexpr std::size_t empty_tombstone() noexcept
             {
-                return tombstone_count<T>() - 1;
+                return traits::tombstone_count - 1u;
+            }
+
+            void store_value_flag() noexcept {}
+
+            void store_none_flag() noexcept
+            {
+                traits::create_tombstone(storage, empty_tombstone());
+            }
+
+            bool has_value() const noexcept
+            {
+                return traits::get_tombstone(storage) != empty_tombstone();
             }
         };
 
         template <typename T>
-        class optional_has_value_impl<false, T>
+        struct uncompressed_optional
         {
-        protected:
-            void store_value() noexcept
+            using traits = tombstone_traits<T>;
+            typename traits::storage_type                                     storage;
+            tiny_storage<tiny_bool, tiny_unsigned<CHAR_BIT - 1, std::size_t>> flag;
+
+            void store_value_flag() noexcept
             {
-                has_value_ = true;
+                flag.at<0>() = true;
             }
 
-            void store_none(void*) noexcept
+            void store_none_flag() noexcept
             {
-                has_value_ = false;
+                flag.at<0>() = false;
             }
 
-            bool has_value_impl(const void*) const noexcept
+            bool has_value() const noexcept
             {
-                return has_value_;
+                return flag.at<0>();
             }
-
-        private:
-            bool has_value_ = false;
-
-            friend struct tiny::tombstone_traits<optional_impl<T>>;
-            friend struct tiny::spare_bits_traits<optional_impl<T>>;
         };
-    } // namespace detail
+
+        template <typename T>
+        struct compressed_traits;
+        template <typename T>
+        struct uncompressed_traits;
+    } // namespace opt_detail
 
     /// The storage implementation of an optional type that uses tombstones whenever possible.
     ///
     /// It is just a low-level implementation helper for an actual optional.
     /// A proper optional type should be built on top of it.
     template <typename T>
-    class optional_impl : detail::optional_has_value_impl<(tombstone_count<T>() > 0u), T>
+    class optional_impl
     {
+        using traits = tombstone_traits<T>;
+
     public:
-        using value_type    = T;
-        using is_compressed = std::integral_constant<bool, (tombstone_count<T>() > 0u)>;
+        using value_type    = typename traits::object_type;
+        using is_compressed = std::integral_constant<bool, (traits::tombstone_count > 0u)>;
 
         //=== constructors ===//
         /// \effects Creates an empty optional.
         optional_impl() noexcept
         {
-            this->store_none(storage_ptr());
+            impl_.store_none_flag();
         }
 
         /// \effects Does nothing.
@@ -103,166 +103,141 @@ namespace tiny
         void create_value(Args&&... args)
         {
             DEBUG_ASSERT(!has_value(), detail::precondition_handler{});
-            ::new (storage_ptr()) T(std::forward<Args>(args)...);
-            this->store_value();
+            traits::create_object(impl_.storage, static_cast<Args>(args)...);
+            impl_.store_value_flag();
         }
 
         /// \effects Destoys the currently stored value.
         /// \requires `has_value() == true`.
         void destroy_value() noexcept
         {
-            value().~T();
-            this->store_none(storage_ptr());
+            traits::destroy_object(impl_.storage);
+            impl_.store_none_flag();
         }
 
         //=== accessors ===//
         /// \returns Whether or not the optional currently stores a value.
         bool has_value() const noexcept
         {
-            return this->has_value_impl(storage_ptr());
+            return impl_.has_value();
         }
 
         /// \returns A reference to the value currently stored inside the optional.
         /// \requires `has_value() == true`.
         /// \group value
-        T& value() noexcept
+        auto value() noexcept -> typename traits::reference
         {
             DEBUG_ASSERT(has_value(), detail::precondition_handler{});
-            return *static_cast<T*>(storage_ptr());
+            return traits::get_object(impl_.storage);
         }
         /// \group value
-        const T& value() const noexcept
+        auto value() const noexcept -> typename traits::const_reference
         {
             DEBUG_ASSERT(has_value(), detail::precondition_handler{});
-            return *static_cast<T*>(storage_ptr());
+            return traits::get_object(impl_.storage);
         }
 
     private:
-        void* storage_ptr() noexcept
-        {
-            return &storage_;
-        }
-        const void* storage_ptr() const noexcept
-        {
-            return &storage_;
-        }
+        typename std::conditional<is_compressed::value, opt_detail::compressed_optional<T>,
+                                  opt_detail::uncompressed_optional<T>>::type impl_;
 
-        using storage = typename std::aligned_storage<sizeof(T), alignof(T)>::type;
-        storage storage_;
-
-        friend struct tombstone_traits<optional_impl<T>>;
+        friend opt_detail::compressed_traits<T>;
+        friend opt_detail::uncompressed_traits<T>;
     };
 
-    /// The tombstone traits for [tiny::optional_impl]().
-    ///
-    /// It will expose additional tombstones of the type.
+    namespace opt_detail
+    {
+        template <typename T>
+        struct compressed_traits
+        {
+            using object_type     = optional_impl<T>;
+            using storage_type    = optional_impl<T>;
+            using reference       = object_type&;
+            using const_reference = const object_type&;
+
+            static constexpr std::size_t tombstone_count = tombstone_traits<T>::tombstone_count - 1;
+
+            static void create_tombstone(storage_type& storage,
+                                         std::size_t   tombstone_index) noexcept
+            {
+                tombstone_traits<T>::create_tombstone(storage.impl_.storage, tombstone_index);
+            }
+
+            // optional_impl only has a default constructor
+            static void create_object(storage_type& storage)
+            {
+                // this overrides the tombstone so it means no tombstone at this level
+                storage.impl_.store_none_flag();
+            }
+
+            static void destroy_object(storage_type&) noexcept {}
+
+            static std::size_t get_tombstone(const storage_type& storage) noexcept
+            {
+                // if non-empty optional: doesn't store a tombstone, so returns invalid index
+                // if empty optional: stores tombstone with index tombstone_count, so invalid index
+                // otherwise: another tombstone index
+                return tombstone_traits<T>::get_tombstone(storage.impl_.storage);
+            }
+
+            static reference get_object(storage_type& storage) noexcept
+            {
+                return storage;
+            }
+            static const_reference get_object(const storage_type& storage) noexcept
+            {
+                return storage;
+            }
+        };
+
+        template <typename T>
+        struct uncompressed_traits
+        {
+            using object_type     = optional_impl<T>;
+            using storage_type    = optional_impl<T>;
+            using reference       = object_type&;
+            using const_reference = const object_type&;
+
+            static constexpr std::size_t tombstone_count = (1u << (CHAR_BIT - 1)) - 1;
+
+            static void create_tombstone(storage_type& storage,
+                                         std::size_t   tombstone_index) noexcept
+            {
+                storage.impl_.flag.template at<1>() = tombstone_index + 1;
+            }
+
+            // optional_impl only has a default constructor
+            static void create_object(storage_type& storage)
+            {
+                // this overrides the tombstone so it means no tombstone at this level
+                storage.impl_.store_none_flag();
+                storage.impl_.flag.template at<1>() = 0;
+            }
+
+            static void destroy_object(storage_type&) noexcept {}
+
+            static std::size_t get_tombstone(const storage_type& storage) noexcept
+            {
+                return storage.impl_.flag.template at<1>() - 1;
+            }
+
+            static reference get_object(storage_type& storage) noexcept
+            {
+                return storage;
+            }
+            static const_reference get_object(const storage_type& storage) noexcept
+            {
+                return storage;
+            }
+        };
+    } // namespace opt_detail
+
+    /// Specialization of the tombstone traits for [tiny::optional_impl]().
     template <typename T>
     struct tombstone_traits<optional_impl<T>>
-    {
-        using overlap_spare_bits =
-            typename std::conditional<optional_impl<T>::is_compressed::value,
-                                      // no spare bits if it is compressed
-                                      std::false_type, tombstone_overlaps_spare_bits<bool>>::type;
-
-        static constexpr std::size_t tombstone_count
-            = optional_impl<T>::is_compressed::value
-                  ?
-                  // compressed, we have one tombstone fewer
-                  tiny::tombstone_count<T>() - 1u
-                  :
-                  // not compressed, we can use the bool for the tombstones
-                  tiny::tombstone_count<bool>();
-
-        static void create_tombstone(void* memory, std::size_t tombstone_index) noexcept
-        {
-            create_tombstone(typename optional_impl<T>::is_compressed{}, memory, tombstone_index);
-        }
-
-        static std::size_t tombstone_index(const void* memory) noexcept
-        {
-            return tombstone_index(typename optional_impl<T>::is_compressed{}, memory);
-        }
-
-    private:
-        static void create_tombstone(std::true_type, void* memory, std::size_t tombstone_index)
-        {
-            // create a new empty optional
-            auto opt = ::new (memory) optional_impl<T>();
-            // create a tombstone of the given index inside the storage of that optional
-            // as we are in the compressed case, we don't need to set any boolean
-            // and as we've used the highest tombstone index as empty optional,
-            // there is no need to adjust the index
-            tiny::create_tombstone<T>(opt->storage_ptr(), tombstone_index);
-        }
-        static std::size_t tombstone_index(std::true_type, const void* memory)
-        {
-            // can always cast to an optional
-            auto opt = static_cast<const optional_impl<T>*>(memory);
-            // again we can just return the tombstone index of T
-            return tiny::tombstone_index<T>(opt->storage_ptr());
-        }
-
-        static void create_tombstone(std::false_type, void* memory, std::size_t tombstone_index)
-        {
-            // create a new empty optional
-            auto opt = ::new (memory) optional_impl<T>();
-            // create the boolean tombstone in the has value field
-            tiny::create_tombstone<bool>(&opt->has_value_, tombstone_index);
-        }
-        static std::size_t tombstone_index(std::false_type, const void* memory)
-        {
-            // can always cast to  an optional
-            auto opt = static_cast<const optional_impl<T>*>(memory);
-            // forward to the boolean field again
-            return tiny::tombstone_index<bool>(&opt->has_value_);
-        }
-    };
-
-    /// The spare bits implementation of [tiny::optional_impl]().
-    /// \notes As `optional_impl` is not copyable, it cannot actually be used directly as a type
-    /// with spare bits. But the proper optional type can delegate to these traits.
-    template <typename T>
-    struct spare_bits_traits<optional_impl<T>>
-    {
-        static constexpr std::size_t spare_bits
-            = optional_impl<T>::is_compressed::value ? 0u : tiny::spare_bits<bool>();
-
-        static void clear(optional_impl<T>& opt)
-        {
-            clear(typename optional_impl<T>::is_compressed{}, opt);
-        }
-
-        static std::uintmax_t extract(const optional_impl<T>& opt)
-        {
-            return extract(typename optional_impl<T>::is_compressed{}, opt);
-        }
-
-        static void put(optional_impl<T>& opt, std::uintmax_t bits)
-        {
-            put(typename optional_impl<T>::is_compressed{}, opt, bits);
-        }
-
-    private:
-        static void           clear(std::true_type, optional_impl<T>&) {}
-        static std::uintmax_t extract(std::true_type, const optional_impl<T>&)
-        {
-            return 0u;
-        }
-        static void put(std::true_type, optional_impl<T>&, std::uintmax_t) {}
-
-        static void clear(std::false_type, optional_impl<T>& opt)
-        {
-            clear_spare_bits(opt.has_value_);
-        }
-        static std::uintmax_t extract(std::false_type, const optional_impl<T>& opt)
-        {
-            return extract_spare_bits(opt.has_value_);
-        }
-        static void put(std::false_type, optional_impl<T>& opt, std::uintmax_t bits)
-        {
-            put_spare_bits(opt.has_value_, bits);
-        }
-    };
+    : std::conditional<(tombstone_traits<T>::tombstone_count > 0), opt_detail::compressed_traits<T>,
+                       opt_detail::uncompressed_traits<T>>::type
+    {};
 } // namespace tiny
 } // namespace foonathan
 

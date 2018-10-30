@@ -26,41 +26,15 @@ namespace tiny
         class proxy
         {
         public:
-            proxy& operator=(bool value) noexcept
+            const proxy& operator=(bool value) const noexcept
             {
                 view_.put(value ? 1 : 0);
                 return *this;
             }
 
-            explicit operator bool() const noexcept
+            operator bool() const noexcept
             {
                 return view_.extract() != 0;
-            }
-
-            friend bool operator==(proxy lhs, proxy rhs) noexcept
-            {
-                return !lhs == !rhs;
-            }
-            friend bool operator==(proxy lhs, bool rhs) noexcept
-            {
-                return !lhs == !rhs;
-            }
-            friend bool operator==(bool lhs, proxy rhs) noexcept
-            {
-                return !lhs == !rhs;
-            }
-
-            friend bool operator!=(proxy lhs, proxy rhs) noexcept
-            {
-                return !(lhs == rhs);
-            }
-            friend bool operator!=(proxy lhs, bool rhs) noexcept
-            {
-                return !(lhs == rhs);
-            }
-            friend bool operator!=(bool lhs, proxy rhs) noexcept
-            {
-                return !(lhs == rhs);
             }
 
         private:

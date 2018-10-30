@@ -13,6 +13,7 @@ set(detail_header_files
     )
 set(header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/bit_view.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/check_size.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/enum_traits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/optional_impl.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/padding_tiny_storage.hpp

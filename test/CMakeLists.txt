@@ -20,6 +20,7 @@ endif()
 
 set(tests
     bit_view.cpp
+    check_size.cpp
     optional_impl.cpp
     pointer_tiny_storage.cpp
     padding_tiny_storage.cpp

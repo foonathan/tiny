@@ -25,9 +25,7 @@ set(tests
     padding_tiny_storage.cpp
     padding_traits.cpp
     poiner_variant_impl.cpp
-    spare_bits_traits.cpp
     tombstone_traits.cpp
-    tiny_pair.cpp
     tiny_types.cpp
     tiny_storage.cpp)
 

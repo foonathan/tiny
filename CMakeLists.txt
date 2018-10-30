@@ -19,13 +19,11 @@ set(header_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/padding_traits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/pointer_tiny_storage.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/pointer_variant_impl.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/spare_bits.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tombstone.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_bool.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_enum.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_flag_set.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_int.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_pair.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_storage.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/foonathan/tiny/tiny_type.hpp
     )
@@ -37,8 +35,3 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     enable_testing()
     add_subdirectory(test)
 endif()
-
-# temporary, for testing
-add_executable(foonathan_tiny_main main.cpp)
-target_link_libraries(foonathan_tiny_main PUBLIC foonathan_tiny)
-set_target_properties(foonathan_tiny_main PROPERTIES CXX_STANDARD 11)

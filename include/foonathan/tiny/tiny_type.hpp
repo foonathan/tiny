@@ -66,6 +66,21 @@ namespace tiny
         static_assert(view.size() == TinyType::bit_size(), "invalid size");
         return tiny_type_access::make<TinyType>(view);
     }
+
+    namespace detail
+    {
+        template <typename T, typename = decltype(make_tiny_proxy<T>(
+                                  std::declval<bit_view<unsigned int, 0, T::bit_size()>>()))>
+        std::true_type test_tiny_type(int);
+
+        template <typename T>
+        std::false_type test_tiny_type(short);
+    } // namespace detail
+
+    /// Whether or not the given type is a `TinyType`.
+    template <typename T>
+    struct is_tiny_type : decltype(detail::test_tiny_type<T>(0))
+    {};
 } // namespace tiny
 } // namespace foonathan
 

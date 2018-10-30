@@ -32,7 +32,7 @@ namespace tiny
             void construct(Args&&... args)
             {
                 padded_ = Padded(static_cast<Args>(args)...);
-                clear_bits(padding_traits<Padded>::padding_view(padded_));
+                clear_bits(padding_of(padded_));
             }
 
             padded_holder(const padded_holder& other) noexcept
@@ -71,7 +71,7 @@ namespace tiny
             void construct(Args&&... args)
             {
                 ::new (get_pointer()) Padded(static_cast<Args>(args)...);
-                clear_bits(padding_traits<Padded>::padding_view(get()));
+                clear_bits(padding_of(get()));
             }
 
             padded_holder(const padded_holder& other)
@@ -119,8 +119,8 @@ namespace tiny
         private:
             void assign_padding(const Padded& other) noexcept
             {
-                auto dest = padding_traits<Padded>::padding_view(get());
-                auto src  = padding_traits<Padded>::padding_view(other);
+                auto dest = padding_of(get());
+                auto src  = padding_of(other);
                 copy_bits(dest, src);
             }
 
@@ -143,7 +143,7 @@ namespace tiny
         template <class Padded, class... TinyTypes>
         class padded_storage_policy
         {
-            static constexpr auto compressed_size = padding_of<Padded>();
+            static constexpr auto compressed_size = padding_bit_size<Padded>();
             static constexpr auto total_size      = total_bit_size<TinyTypes...>();
             static constexpr auto remaining_size
                 = total_size > compressed_size ? total_size - compressed_size : 0;
@@ -167,11 +167,11 @@ namespace tiny
 
                 padding_view_t<Padded> view() noexcept
                 {
-                    return padding_traits<Padded>::padding_view(obj.get());
+                    return padding_of(obj.get());
                 }
                 padding_view_t<const Padded> view() const noexcept
                 {
-                    return padding_traits<Padded>::padding_view(obj.get());
+                    return padding_of(obj.get());
                 }
             };
 
@@ -199,13 +199,11 @@ namespace tiny
 
                 joined_bit_view<padding_view_t<Padded>, storage_view> view() noexcept
                 {
-                    return join_bit_views(padding_traits<Padded>::padding_view(obj.get()),
-                                          storage_view(storage));
+                    return join_bit_views(padding_of(obj.get()), storage_view(storage));
                 }
                 joined_bit_view<padding_view_t<const Padded>, storage_cview> view() const noexcept
                 {
-                    return join_bit_views(padding_traits<Padded>::padding_view(obj.get()),
-                                          storage_cview(storage));
+                    return join_bit_views(padding_of(obj.get()), storage_cview(storage));
                 }
             };
 

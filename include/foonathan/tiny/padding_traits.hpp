@@ -12,10 +12,28 @@ namespace foonathan
 {
 namespace tiny
 {
+    /// Checks whether the two given types are layout compatible.
+    ///
+    /// Two types are layout compatible if they are the same type (ignoring cv),
+    /// or if they are two layout compatible standard layout types as described [class.mem]/23,
+    /// i.e. their members in declaration order are pairwise layout compatible.
+    ///
+    /// \notes It is not actually possible to implement this type traits,
+    /// so it just checks that size and alignment is the same as a heuristic.
+    template <typename T, typename U>
+    struct is_layout_compatible
+    : std::integral_constant<
+          bool,
+          std::is_same<typename std::remove_cv<T>::type, typename std::remove_cv<U>::type>::value
+              || (std::is_standard_layout<T>::value && std::is_standard_layout<U>::value
+                  && sizeof(T) == sizeof(U) && alignof(T) && alignof(U))>
+    {};
+
     //=== padding_traits ===//
     /// Information about the padding bits of a type.
     ///
     /// A specialization usually simply inherits from [tiny::padding_traits_aggregate]().
+    /// \requires It must only be specialized for standard layout types.
     template <typename T>
     struct padding_traits
     {
@@ -25,15 +43,16 @@ namespace tiny
         /// \returns A [tiny::bit_view]() to the padding bytes.
         /// The integer type must be `unsigned char[sizeof(T)]`.
         /// \group padding_view
-        static bit_view<unsigned char[sizeof(T)], 0, 0> padding_view(T& object) noexcept
+        static bit_view<unsigned char[sizeof(T)], 0, 0> padding_view(unsigned char* memory) noexcept
         {
-            (void)object;
+            (void)memory;
             return {};
         }
         /// \group padding_view
-        static bit_view<const unsigned char[sizeof(T)], 0, 0> padding_view(const T& object) noexcept
+        static bit_view<const unsigned char[sizeof(T)], 0, 0> padding_view(
+            const unsigned char* memory) noexcept
         {
-            (void)object;
+            (void)memory;
             return {};
         }
     };
@@ -41,12 +60,27 @@ namespace tiny
     /// \returns The padding view type of the given type.
     /// \notes Its `const`-qualification depends on the cv of `T`.
     template <typename T>
-    using padding_view_t = decltype(
-        padding_traits<typename std::remove_cv<T>::type>::padding_view(std::declval<T&>()));
+    using padding_view_t = decltype(padding_traits<typename std::remove_cv<T>::type>::padding_view(
+        std::declval<typename std::conditional<std::is_const<T>::value, const unsigned char*,
+                                               unsigned char*>::type>()));
+
+    /// \returns The padding view for the object.
+    /// \group padding_of
+    template <typename T>
+    padding_view_t<T> padding_of(T& obj) noexcept
+    {
+        return padding_traits<T>::padding_view(reinterpret_cast<unsigned char*>(&obj));
+    }
+    /// \group padding_of
+    template <typename T>
+    padding_view_t<const T> padding_of(const T& obj) noexcept
+    {
+        return padding_traits<T>::padding_view(reinterpret_cast<const unsigned char*>(&obj));
+    }
 
     /// \returns The amount of padding bits in the given type.
     template <typename T>
-    constexpr std::size_t padding_of() noexcept
+    constexpr std::size_t padding_bit_size() noexcept
     {
         return padding_view_t<T>::size();
     }
@@ -177,32 +211,43 @@ namespace tiny
         using object_type = typename impl::object_type;
 
         static bit_view<unsigned char[sizeof(object_type)], 0, last_bit> byte_view(
-            object_type& object) noexcept
+            unsigned char* memory) noexcept
         {
-            return bit_view<unsigned char[sizeof(object_type)], 0, last_bit>(
-                reinterpret_cast<unsigned char*>(&object));
+            return bit_view<unsigned char[sizeof(object_type)], 0, last_bit>(memory);
         }
         static bit_view<const unsigned char[sizeof(object_type)], 0, last_bit> byte_view(
-            const object_type& object) noexcept
+            const unsigned char* memory) noexcept
         {
-            return bit_view<const unsigned char[sizeof(object_type)], 0, last_bit>(
-                reinterpret_cast<const unsigned char*>(&object));
+            return bit_view<const unsigned char[sizeof(object_type)], 0, last_bit>(memory);
         }
 
     public:
         static constexpr auto is_specialized = true;
 
-        static auto padding_view(object_type& object) noexcept
-            -> decltype(impl::get_view(byte_view(object)))
+        static auto padding_view(unsigned char* memory) noexcept
+            -> decltype(impl::get_view(byte_view(memory)))
         {
-            return impl::get_view(byte_view(object));
+            return impl::get_view(byte_view(memory));
         }
 
-        static auto padding_view(const object_type& object) noexcept
-            -> decltype(impl::get_view(byte_view(object)))
+        static auto padding_view(const unsigned char* memory) noexcept
+            -> decltype(impl::get_view(byte_view(memory)))
         {
-            return impl::get_view(byte_view(object));
+            return impl::get_view(byte_view(memory));
         }
+    };
+
+    /// Implements the [tiny::padding_traits]() by using a layout compatible type.
+    ///
+    /// Simply specialize the traits for your type and inherit from it,
+    /// passing it the type that is layout compatible and already specialized them.
+    template <typename T, typename LayoutCompatible>
+    struct padding_traits_layout_compatible : padding_traits<LayoutCompatible>
+    {
+        static_assert(is_layout_compatible<T, LayoutCompatible>::value,
+                      "LayoutCompatible not layout compatible");
+        static_assert(padding_traits<LayoutCompatible>::is_specialized,
+                      "LayoutCompatible doesn't have the padding traits either");
     };
 } // namespace tiny
 } // namespace foonathan

@@ -205,10 +205,10 @@ TEST_CASE("tiny_int")
     tiny_storage storage = 0;
 
     auto cproxy = make_cproxy<type>(storage);
-    verify_unsigned(cproxy, 0);
+    verify_int(cproxy, 0);
 
     auto proxy = make_proxy<type>(storage);
-    verify_unsigned(proxy, 0);
+    verify_int(proxy, 0);
 
     SECTION("all values")
     {
@@ -234,6 +234,132 @@ TEST_CASE("tiny_int")
 
         proxy %= 2;
         verify_int(proxy, 1);
+
+        auto value = proxy++;
+        verify_int(proxy, 2);
+        REQUIRE(value == 1);
+
+        value = ++proxy;
+        verify_int(proxy, 3);
+        REQUIRE(value == 3);
+
+        value = proxy--;
+        verify_int(proxy, 2);
+        REQUIRE(value == 3);
+
+        value = --proxy;
+        verify_int(proxy, 1);
+        REQUIRE(value == 1);
+    }
+}
+
+TEST_CASE("tiny_int_range")
+{
+    SECTION("signed")
+    {
+        using type           = tiny_int_range<-10, 10>;
+        tiny_storage storage = 0;
+
+        auto cproxy = make_cproxy<type>(storage);
+        verify_int(cproxy, -10);
+
+        auto proxy = make_proxy<type>(storage);
+        verify_int(proxy, -10);
+
+        SECTION("all values")
+        {
+            for (auto i = -10; i <= 10; ++i)
+            {
+                proxy = i;
+                verify_int(proxy, i);
+            }
+        }
+        SECTION("arithmetic operation")
+        {
+            proxy += 13;
+            verify_int(proxy, 3);
+
+            proxy -= 7;
+            verify_int(proxy, -4);
+
+            proxy *= -2;
+            verify_int(proxy, 8);
+
+            proxy /= 3;
+            verify_int(proxy, 2);
+
+            proxy %= 2;
+            verify_int(proxy, 0);
+
+            auto value = proxy++;
+            verify_int(proxy, 1);
+            REQUIRE(value == 0);
+
+            value = ++proxy;
+            verify_int(proxy, 2);
+            REQUIRE(value == 2);
+
+            value = proxy--;
+            verify_int(proxy, 1);
+            REQUIRE(value == 2);
+
+            value = --proxy;
+            verify_int(proxy, 0);
+            REQUIRE(value == 0);
+        }
+    }
+    SECTION("unsigned")
+    {
+        using type           = tiny_int_range<10, 100>;
+        tiny_storage storage = 0;
+
+        auto cproxy = make_cproxy<type>(storage);
+        verify_unsigned(cproxy, 10u);
+
+        auto proxy = make_proxy<type>(storage);
+        verify_unsigned(proxy, 10u);
+
+        SECTION("all values")
+        {
+            for (auto i = 10u; i <= 100; ++i)
+            {
+                proxy = i;
+                verify_unsigned(proxy, i);
+            }
+        }
+        SECTION("arithmetic operation")
+        {
+            proxy += 43;
+            verify_unsigned(proxy, 53u);
+
+            proxy -= 40;
+            verify_unsigned(proxy, 13u);
+
+            proxy *= 7;
+            verify_unsigned(proxy, 91u);
+
+            proxy /= 3;
+            verify_unsigned(proxy, 30u);
+
+            proxy %= 19;
+            verify_unsigned(proxy, 11u);
+
+            auto value = proxy++;
+            verify_unsigned(proxy, 12u);
+            REQUIRE(value == 11u);
+
+            value = ++proxy;
+            verify_unsigned(proxy, 13u);
+            REQUIRE(value == 13u);
+
+            value = proxy--;
+            verify_unsigned(proxy, 12u);
+            REQUIRE(value == 13u);
+
+            value = --proxy;
+            verify_unsigned(proxy, 11u);
+            REQUIRE(value == 11u);
+        }
     }
 }
 

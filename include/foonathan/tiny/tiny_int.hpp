@@ -5,6 +5,10 @@
 #ifndef FOONATHAN_TINY_TINY_INT_HPP_INCLUDED
 #define FOONATHAN_TINY_TINY_INT_HPP_INCLUDED
 
+#include <limits>
+
+#include <foonathan/tiny/detail/ilog2.hpp>
+#include <foonathan/tiny/detail/select_integer.hpp>
 #include <foonathan/tiny/tiny_type.hpp>
 
 namespace foonathan
@@ -225,6 +229,119 @@ namespace tiny
                 // as truncation will preserve signed-ness
                 auto rep = reinterpret_cast<unsigned_type&>(value);
                 view_.put(static_cast<std::uintmax_t>(rep));
+            }
+
+            BitView view_;
+
+            friend tiny_type_access;
+        };
+    };
+
+    /// \exclude
+    namespace tiny_int_detail
+    {
+        template <std::intmax_t Min, std::intmax_t Max>
+        constexpr std::size_t bits_for() noexcept
+        {
+            static_assert(Min <= Max, "invalid range");
+            return detail::ilog2_ceil(static_cast<std::uintmax_t>(Max - Min));
+        }
+
+        template <std::intmax_t Min, std::intmax_t Max>
+        using integer_type_for = typename std::conditional<Min >= 0, unsigned, int>::type;
+    } // namespace tiny_int_detail
+
+    /// An integer that can hold the values in the range `[Min, Max]`.
+    ///
+    /// It internally stores the offset from `Min`.
+    /// This means that the all bits zero value corresponds to `Min`, and not `0` like the other
+    /// integers.
+    template <std::intmax_t Min, std::intmax_t Max,
+              typename Integer = tiny_int_detail::integer_type_for<Min, Max>>
+    class tiny_int_range
+    {
+        static_assert(std::is_integral<Integer>::value, "must be an integer");
+        static_assert(std::numeric_limits<Integer>::min() <= Min
+                          && Max <= std::numeric_limits<Integer>::max(),
+                      "integer can't handle range");
+
+    public:
+        using object_type = Integer;
+
+        static constexpr std::size_t bit_size() noexcept
+        {
+            return tiny_int_detail::bits_for<Min, Max>();
+        }
+
+        template <class BitView>
+        class proxy
+        {
+        public:
+            operator object_type() const noexcept
+            {
+                return get();
+            }
+
+            const proxy& operator=(object_type value) const noexcept
+            {
+                DEBUG_ASSERT(Min <= value, detail::precondition_handler{},
+                             "overflow in tiny_int_range");
+                DEBUG_ASSERT(value <= Max, detail::precondition_handler{},
+                             "overflow in tiny_int_range");
+                auto offset = std::intmax_t(value) - Min;
+                DEBUG_ASSERT(offset >= 0, detail::assert_handler{});
+                view_.put(static_cast<std::uintmax_t>(offset));
+                return *this;
+            }
+
+            const proxy& operator+=(object_type i) const noexcept
+            {
+                return *this = static_cast<object_type>(get() + i);
+            }
+            const proxy& operator-=(object_type i) const noexcept
+            {
+                return *this = static_cast<object_type>(get() - i);
+            }
+            const proxy& operator*=(object_type i) const noexcept
+            {
+                return *this = static_cast<object_type>(get() * i);
+            }
+            const proxy& operator/=(object_type i) const noexcept
+            {
+                return *this = static_cast<object_type>(get() / i);
+            }
+            const proxy& operator%=(object_type i) const noexcept
+            {
+                return *this = static_cast<object_type>(get() % i);
+            }
+
+            const proxy& operator++() const noexcept
+            {
+                return *this += 1;
+            }
+            object_type operator++(int) const noexcept
+            {
+                auto copy = get();
+                ++*this;
+                return copy;
+            }
+            const proxy& operator--() const noexcept
+            {
+                return *this -= 1;
+            }
+            object_type operator--(int) const noexcept
+            {
+                auto copy = get();
+                --*this;
+                return copy;
+            }
+
+        private:
+            explicit proxy(BitView view) noexcept : view_(view) {}
+
+            object_type get() const noexcept
+            {
+                return static_cast<object_type>(std::intmax_t(view_.extract()) + Min);
             }
 
             BitView view_;

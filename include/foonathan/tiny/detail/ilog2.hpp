@@ -5,8 +5,6 @@
 #ifndef FOONATHAN_TINY_DETAIL_ILOG2_HPP_INCLUDED
 #define FOONATHAN_TINY_DETAIL_ILOG2_HPP_INCLUDED
 
-#include <climits>
-#include <cstddef>
 #include <cstdint>
 
 namespace foonathan
@@ -22,26 +20,24 @@ namespace tiny
             return (x & (x - 1)) == 0;
         }
 
-        constexpr std::size_t ilog2_base(std::uintmax_t x) noexcept
+        constexpr std::size_t ilog2_base(std::size_t x) noexcept
         {
-            // TODO: cross platform
-            // cast have to be that way, compiler bug with warning
-            return static_cast<std::size_t>(int(sizeof(x) * CHAR_BIT) - __builtin_clzll(x));
+            return x == 0 ? 0 : ilog2_base(x >> 1) + 1;
         }
 
         // ilog2() implementation, cuts part after the comma
         // e.g. 1 -> 0, 2 -> 1, 3 -> 1, 4 -> 2, 5 -> 2
-        constexpr std::size_t ilog2(std::uintmax_t x) noexcept
+        constexpr std::size_t ilog2(std::size_t x) noexcept
         {
             return ilog2_base(x) - 1;
         }
 
         // ceiling ilog2() implementation, adds one if part after comma
         // e.g. 1 -> 0, 2 -> 1, 3 -> 2, 4 -> 2, 5 -> 3
-        constexpr std::size_t ilog2_ceil(std::uintmax_t x) noexcept
+        constexpr std::size_t ilog2_ceil(std::size_t x) noexcept
         {
             // only subtract one if power of two
-            return ilog2_base(x) - std::uintmax_t(is_power_of_two(x));
+            return ilog2_base(x) - std::size_t(is_power_of_two(x));
         }
     } // namespace detail
 } // namespace tiny

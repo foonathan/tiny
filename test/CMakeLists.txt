@@ -45,6 +45,7 @@ target_compile_options(foonathan_tiny_test_base INTERFACE
 
 # unit tests
 set(tests
+    detail/ilog2.cpp
     bit_view.cpp
     check_size.cpp
     optional_impl.cpp

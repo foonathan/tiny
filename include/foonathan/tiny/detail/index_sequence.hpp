@@ -25,7 +25,7 @@ namespace tiny
 #if defined(__clang__)
         template <std::size_t Size>
         using make_index_sequence = __make_integer_seq<integer_sequence, std::size_t, Size>;
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && __GNUC__ >= 8
         template <std::size_t Size>
         using make_index_sequence = index_sequence<__integer_pack(Size)...>;
 #else

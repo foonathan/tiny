@@ -246,9 +246,6 @@ namespace tiny
             static_assert(Min <= Max, "invalid range");
             return detail::ilog2_ceil(static_cast<std::uintmax_t>(Max - Min));
         }
-
-        template <std::intmax_t Min, std::intmax_t Max>
-        using integer_type_for = typename std::conditional<Min >= 0, unsigned, int>::type;
     } // namespace tiny_int_detail
 
     /// An integer that can hold the values in the range `[Min, Max]`.
@@ -256,8 +253,7 @@ namespace tiny
     /// It internally stores the offset from `Min`.
     /// This means that the all bits zero value corresponds to `Min`, and not `0` like the other
     /// integers.
-    template <std::intmax_t Min, std::intmax_t Max,
-              typename Integer = tiny_int_detail::integer_type_for<Min, Max>>
+    template <std::intmax_t Min, std::intmax_t Max, typename Integer = int>
     class tiny_int_range
     {
         static_assert(std::is_integral<Integer>::value, "must be an integer");

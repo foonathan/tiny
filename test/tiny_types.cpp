@@ -310,7 +310,7 @@ TEST_CASE("tiny_int_range")
     }
     SECTION("unsigned")
     {
-        using type           = tiny_int_range<10, 100>;
+        using type           = tiny_int_range<10, 100, unsigned>;
         tiny_storage storage = 0;
 
         auto cproxy = make_cproxy<type>(storage);

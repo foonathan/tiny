@@ -14,21 +14,6 @@ namespace foonathan
 {
 namespace tiny
 {
-    /// Tags a tiny type for easy retrieval in the [lex::tiny_type_storage]().
-    template <class Tag, class TinyType>
-    struct tiny_tagged
-    {
-        using object_type = typename TinyType::object_type;
-
-        static constexpr std::size_t bit_size() noexcept
-        {
-            return TinyType::bit_size();
-        }
-
-        template <class BitView>
-        using proxy = typename TinyType::template proxy<BitView>;
-    };
-
     namespace tiny_storage_detail
     {
         //=== is_target ===//
@@ -38,10 +23,6 @@ namespace tiny
 
         template <std::size_t Index, typename Target>
         struct is_target<Index, Target, Target> : std::true_type
-        {};
-
-        template <std::size_t Index, typename Tag, class TinyType>
-        struct is_target<Index, Tag, tiny_tagged<Tag, TinyType>> : std::true_type
         {};
 
         template <std::size_t Index, class TinyType>
@@ -55,7 +36,7 @@ namespace tiny
         {
             static constexpr auto found_count = 0;
             static constexpr auto offset      = 0;
-            using type                        = tiny_tagged<void, void>;
+            using type                        = void;
         };
 
         template <typename Target, std::size_t CurIndex, std::size_t CurOffset, class Head,
@@ -76,8 +57,7 @@ namespace tiny
         {
             using result = find_impl<Target, 0, 0, TinyTypes...>;
             static_assert(result::found_count > 0, "tiny type not stored");
-            static_assert(result::found_count <= 1,
-                          "tiny type ambiguous, use index or tagged type");
+            static_assert(result::found_count <= 1, "tiny type ambiguous, use index");
 
             using type = typename result::type;
 
@@ -216,21 +196,19 @@ namespace tiny
 
         //=== access ===//
         /// Array access operator.
-        /// \returns The proxy for the tiny type matching `Tag`.
-        /// If `Tag` is a tiny type, it matches the specified type.
+        /// \returns The proxy for the tiny type `T`.
         /// It is an error if there is more than one of those tiny types in the storage.
-        /// Otherwise, `Tag` tries to match the tag of a [lex::tiny_tagged]() type.
         /// \group array
-        template <class Tag>
-        auto operator[](Tag) noexcept -> proxy_of<Tag>
+        template <class T>
+        auto operator[](T) noexcept -> proxy_of<T>
         {
-            return get_impl<Tag>();
+            return get_impl<T>();
         }
         /// \group array
-        template <class Tag>
-        auto operator[](Tag) const noexcept -> cproxy_of<Tag>
+        template <class T>
+        auto operator[](T) const noexcept -> cproxy_of<T>
         {
-            return get_impl<Tag>();
+            return get_impl<T>();
         }
 
         /// \returns The proxy of the tiny type at the specified index.
@@ -265,6 +243,28 @@ namespace tiny
         {
             static_assert(Dummy == 1, "only allowed for 1 tiny type");
             return at<0>();
+        }
+
+        /// \returns A [tiny::bit_view]() of the views that are not used but there for padding.
+        /// \group spare_bits
+        auto spare_bits() noexcept
+            -> decltype(std::declval<TinyStoragePolicy&>()
+                            .storage_view()
+                            .template subview<total_bit_size<TinyTypes...>(), last_bit>())
+        {
+            return storage_policy()
+                .storage_view()
+                .template subview<total_bit_size<TinyTypes...>(), last_bit>();
+        }
+        /// \group spare_bits
+        auto spare_bits() const noexcept
+            -> decltype(std::declval<const TinyStoragePolicy&>()
+                            .storage_view()
+                            .template subview<total_bit_size<TinyTypes...>(), last_bit>())
+        {
+            return storage_policy()
+                .storage_view()
+                .template subview<total_bit_size<TinyTypes...>(), last_bit>();
         }
 
     protected:

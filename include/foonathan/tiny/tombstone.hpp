@@ -390,6 +390,8 @@ namespace tiny
         {};
     } // namespace tombstone_detail
 
+    /// Specialization of the tombstone traits for pointers.
+    /// It will use the invalid alignments.
     template <typename Pointer>
     struct tombstone_traits<
         Pointer, typename std::enable_if<std::is_pointer<Pointer>::value

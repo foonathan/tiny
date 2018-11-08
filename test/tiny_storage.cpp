@@ -17,8 +17,7 @@ TEST_CASE("tiny_storage")
     {};
     struct second
     {};
-    using storage = tiny_storage<tiny_unsigned<7>, tiny_tagged<first, tiny_bool>,
-                                 tiny_tagged<second, tiny_bool>>;
+    using storage = tiny_storage<tiny_unsigned<7>, tiny_bool, tiny_bool>;
 
     storage     s;
     const auto& cs = s;
@@ -39,11 +38,7 @@ TEST_CASE("tiny_storage")
     REQUIRE(cs.at<2>() == true);
 
     REQUIRE(s[tiny_unsigned<7>{}] == 42);
-    REQUIRE(s[first{}] == true);
-    REQUIRE(s[second{}] == true);
     REQUIRE(cs[tiny_unsigned<7>{}] == 42);
-    REQUIRE(cs[first{}] == true);
-    REQUIRE(cs[second{}] == true);
 
     s = storage(7, false, true);
     REQUIRE(s.at<0>() == 7);

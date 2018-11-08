@@ -67,3 +67,7 @@ if(${FOONATHAN_TINY_BUILD_TEST} OR (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOUR
     add_subdirectory(test)
 endif()
 
+option(FOONATHAN_TINY_BUILD_EXAMPLE "build examples of foonathan/tiny" OFF)
+if(${FOONATHAN_TINY_BUILD_EXAMPLE} OR (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
+    add_subdirectory(example)
+endif()

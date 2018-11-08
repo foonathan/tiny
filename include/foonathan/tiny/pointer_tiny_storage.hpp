@@ -19,7 +19,8 @@ namespace tiny
         {
             static constexpr auto compressed_size = detail::ilog2_ceil(Alignment);
             static constexpr auto total_size      = total_bit_size<TinyTypes...>();
-            static constexpr auto remaining_size  = total_size - compressed_size;
+            static constexpr auto remaining_size
+                = total_size < compressed_size ? 0 : total_size - compressed_size;
 
             using ptr_view  = bit_view<std::uintptr_t, 0, compressed_size>;
             using ptr_cview = bit_view<const std::uintptr_t, 0, compressed_size>;

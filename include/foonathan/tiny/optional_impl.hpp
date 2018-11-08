@@ -45,22 +45,22 @@ namespace tiny
         struct uncompressed_optional
         {
             using traits = tombstone_traits<T>;
-            typename traits::storage_type                                     storage;
-            tiny_storage<tiny_bool, tiny_unsigned<CHAR_BIT - 1, std::size_t>> flag;
+            typename traits::storage_type storage;
+            tiny_storage<tiny_bool>       flag;
 
             void store_value_flag() noexcept
             {
-                flag.at<0>() = true;
+                flag.tiny() = true;
             }
 
             void store_none_flag() noexcept
             {
-                flag.at<0>() = false;
+                flag.tiny() = false;
             }
 
             bool has_value() const noexcept
             {
-                return flag.at<0>();
+                return flag.tiny();
             }
         };
 
@@ -204,7 +204,7 @@ namespace tiny
             static void create_tombstone(storage_type& storage,
                                          std::size_t   tombstone_index) noexcept
             {
-                storage.impl_.flag.template at<1>() = tombstone_index + 1;
+                storage.impl_.flag.spare_bits().put(tombstone_index + 1);
             }
 
             // optional_impl only has a default constructor
@@ -212,14 +212,14 @@ namespace tiny
             {
                 // this overrides the tombstone so it means no tombstone at this level
                 storage.impl_.store_none_flag();
-                storage.impl_.flag.template at<1>() = 0;
+                storage.impl_.flag.spare_bits().put(0);
             }
 
             static void destroy_object(storage_type&) noexcept {}
 
             static std::size_t get_tombstone(const storage_type& storage) noexcept
             {
-                return storage.impl_.flag.template at<1>() - 1;
+                return storage.impl_.flag.spare_bits().extract() - 1;
             }
 
             static reference get_object(storage_type& storage) noexcept

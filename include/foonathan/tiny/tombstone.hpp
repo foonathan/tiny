@@ -129,42 +129,100 @@ namespace tiny
         }
     };
 
-    //=== tombstone_traits using padding ===//
+    //=== tombstone_traits_simple ===//
     /// \exclude
     namespace tombstone_detail
     {
         template <typename T, class Tombstone>
-        union padded_storage_type_trivial
+        union dual_storage_type_trivial
         {
             Tombstone tombstone;
             T         object;
 
-            padded_storage_type_trivial() noexcept {}
-            padded_storage_type_trivial(const padded_storage_type_trivial&) = delete;
-            padded_storage_type_trivial& operator=(const padded_storage_type_trivial&) = delete;
-            ~padded_storage_type_trivial() noexcept                                    = default;
+            dual_storage_type_trivial() noexcept {}
+            dual_storage_type_trivial(const dual_storage_type_trivial&) = delete;
+            dual_storage_type_trivial& operator=(const dual_storage_type_trivial&) = delete;
+            ~dual_storage_type_trivial() noexcept                                  = default;
         };
 
         template <typename T, class Tombstone>
-        union padded_storage_type_non_trivial
+        union dual_storage_type_non_trivial
         {
             Tombstone tombstone;
             T         object;
 
-            padded_storage_type_non_trivial() noexcept {}
-            padded_storage_type_non_trivial(const padded_storage_type_non_trivial&) = delete;
-            padded_storage_type_non_trivial& operator=(const padded_storage_type_non_trivial&)
-                = delete;
-            ~padded_storage_type_non_trivial() noexcept {}
+            dual_storage_type_non_trivial() noexcept {}
+            dual_storage_type_non_trivial(const dual_storage_type_non_trivial&) = delete;
+            dual_storage_type_non_trivial& operator=(const dual_storage_type_non_trivial&) = delete;
+            ~dual_storage_type_non_trivial() noexcept {}
         };
 
         template <typename T, class Tombstone>
-        using padded_storage_type_for =
+        using dual_storage_type_for =
             typename std::conditional<std::is_trivially_destructible<T>::value,
-                                      padded_storage_type_trivial<T, Tombstone>,
-                                      padded_storage_type_non_trivial<T, Tombstone>>::type;
+                                      dual_storage_type_trivial<T, Tombstone>,
+                                      dual_storage_type_non_trivial<T, Tombstone>>::type;
     } // namespace tombstone_detail
 
+    /// A tombstone traits implementation of common boilerplate.
+    ///
+    /// The `TombstoneType` is a trivially copyable, nothrow default constructible type that is
+    /// layout compatible with `T`. It can store all the tombstones and valid objects.
+    ///
+    /// When specializing the traits, inherit from it and provide the following members:
+    /// * `static constexpr std::size_t tombstone_count`: the number of tombstones
+    /// * `static void create_tombstone_impl(void* memory, std::size_t index)`:
+    ///   creates an object of `TombstoneType` in `memory` representing the specified tombstone
+    /// * `static std::size_t get_tombstone_impl(const TombstoneType& tombstone_or_object)`:
+    ///   returns the index of the tombstone or an invalid index if it is no tombstone
+    template <typename T, class TombstoneType = T>
+    class tombstone_traits_simple
+    {
+        static_assert(is_layout_compatible<T, TombstoneType>::value,
+                      "TombstoneType must be layout compatible");
+        static_assert(std::is_default_constructible<TombstoneType>::value,
+                      "TombstoneType must be nothrow default constructible");
+        static_assert(std::is_trivially_copyable<TombstoneType>::value,
+                      "TombstoneType must be trivially copyable");
+
+    public:
+        using object_type     = T;
+        using storage_type    = tombstone_detail::dual_storage_type_for<T, TombstoneType>;
+        using reference       = T&;
+        using const_reference = const T&;
+
+        static void create_tombstone(storage_type& storage, std::size_t index) noexcept
+        {
+            tombstone_traits<T>::create_tombstone_impl(&storage.tombstone, index);
+        }
+
+        template <typename... Args>
+        static void create_object(storage_type& storage, Args&&... args)
+        {
+            ::new (static_cast<void*>(&storage.object)) T(static_cast<Args>(args)...);
+        }
+
+        static void destroy_object(storage_type& storage) noexcept
+        {
+            storage.object.~T();
+        }
+
+        static std::size_t get_tombstone(const storage_type& storage) noexcept
+        {
+            return tombstone_traits<T>::get_tombstone_impl(storage.tombstone);
+        }
+
+        static reference get_object(storage_type& storage) noexcept
+        {
+            return storage.object;
+        }
+        static const_reference get_object(const storage_type& storage) noexcept
+        {
+            return storage.object;
+        }
+    };
+
+    //=== tombstone_traits using padding ===//
     /// A tombstone traits implementation that uses the padding bits to mark the tombstones.
     ///
     /// `Padded` is the type that will get a tombstone,
@@ -189,7 +247,7 @@ namespace tiny
     public:
         using object_type = T;
 
-        using storage_type = tombstone_detail::padded_storage_type_for<T, TombstoneType>;
+        using storage_type = tombstone_detail::dual_storage_type_for<T, TombstoneType>;
 
         using reference       = T&;
         using const_reference = const T&;

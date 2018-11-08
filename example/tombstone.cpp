@@ -44,6 +44,7 @@ namespace foonathan
 {
 namespace tiny
 {
+#ifdef TOMBSTONE_MANUAL
     template <typename T>
     struct tombstone_traits<non_null_ptr<T>>
     {
@@ -134,6 +135,34 @@ namespace tiny
             return storage.object;
         }
     };
+#else
+    // The pattern where you have a custom type that can store the object plus tombstone and you do
+    // type punning is common, so the boilerplate can be eliminated.
+    template <typename T>
+    struct tombstone_traits<non_null_ptr<T>>
+    // Inherit from `tiny::tombstone_traits_simple`,
+    // the second type is the `TombstoneType` — the trivial type that is type punned.
+    : tiny::tombstone_traits_simple<non_null_ptr<T>, T*>
+    {
+        // Still one tombstone.
+        static constexpr std::size_t tombstone_count = 1;
+
+        // This function creates the specified `TombstoneType` object.
+        static void create_tombstone_impl(void* memory, std::size_t index) noexcept
+        {
+            // Again, we can ignore the index.
+            assert(index == 0);
+            ::new (memory) T*(nullptr);
+        }
+
+        // This function returns the index by passing it the `TombstoneType` object.
+        static std::size_t get_tombstone_impl(T* tombstone) noexcept
+        {
+            // Same implementation as before.
+            return tombstone == nullptr ? 0 : 1;
+        }
+    };
+#endif
 } // namespace tiny
 } // namespace foonathan
 

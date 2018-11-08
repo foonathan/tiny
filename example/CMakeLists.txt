@@ -10,3 +10,7 @@ target_link_libraries(foonathan_tiny_custom_tiny_type PUBLIC foonathan_tiny)
 
 add_executable(foonathan_tiny_tombstone tombstone.cpp)
 target_link_libraries(foonathan_tiny_tombstone PUBLIC foonathan_tiny)
+
+add_executable(foonathan_tiny_tombstone_manual tombstone.cpp)
+target_link_libraries(foonathan_tiny_tombstone_manual PUBLIC foonathan_tiny)
+target_compile_definitions(foonathan_tiny_tombstone_manual PUBLIC TOMBSTONE_MANUAL)

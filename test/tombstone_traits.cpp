@@ -85,6 +85,49 @@ TEST_CASE("tombstone_traits default")
 
 namespace
 {
+struct non_null_ptr
+{
+    int* ptr;
+
+    friend bool operator==(non_null_ptr a, non_null_ptr b) noexcept
+    {
+        return a.ptr == b.ptr;
+    }
+};
+} // namespace
+
+namespace foonathan
+{
+namespace tiny
+{
+    template <>
+    struct tombstone_traits<non_null_ptr> : tombstone_traits_simple<non_null_ptr, int*>
+    {
+        static constexpr std::size_t tombstone_count = 1;
+
+        static void create_tombstone_impl(void* memory, std::size_t) noexcept
+        {
+            ::new (memory) int*(nullptr);
+        }
+
+        static std::size_t get_tombstone_impl(int* ptr) noexcept
+        {
+            return ptr == nullptr ? 0 : 1;
+        }
+    };
+} // namespace tiny
+} // namespace foonathan
+
+TEST_CASE("tombstone_traits_simple")
+{
+    verify_tombstones<non_null_ptr>(1);
+
+    int i;
+    verify_object<non_null_ptr>(non_null_ptr{&i});
+}
+
+namespace
+{
 struct padded_and_layout
 {
     std::uint8_t  a;

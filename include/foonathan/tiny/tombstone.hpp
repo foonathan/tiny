@@ -385,9 +385,9 @@ namespace tiny
 
         static void destroy_object(storage_type&) noexcept {}
 
-        static std::size_t get_tombstone(storage_type storage) noexcept
+        static std::size_t get_tombstone(const storage_type& storage) noexcept
         {
-            auto bits = std::size_t(reinterpret_cast<unsigned char&>(storage) >> 1);
+            auto bits = std::size_t(reinterpret_cast<const unsigned char&>(storage) >> 1);
             // unconditionally subtract one, will overflow correctly
             return bits - 1;
         }

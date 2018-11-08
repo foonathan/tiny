@@ -8,6 +8,7 @@
 
 #include <foonathan/tiny/optional_impl.hpp>
 #include <foonathan/tiny/pointer_tiny_storage.hpp>
+#include <foonathan/tiny/tiny_enum.hpp>
 
 using namespace foonathan::tiny;
 
@@ -213,10 +214,10 @@ TEST_CASE("tombstone_traits tiny")
             unsigned_count_,
         };
 
-        verify_tombstones<foo>(63);
-        verify_object(foo::a);
-        verify_object(foo::b);
-        verify_object(foo::c);
+        verify_tombstones<tiny_enum<foo>>(63);
+        verify_object<tiny_enum<foo>>(foo::a);
+        verify_object<tiny_enum<foo>>(foo::b);
+        verify_object<tiny_enum<foo>>(foo::c);
     }
 }
 

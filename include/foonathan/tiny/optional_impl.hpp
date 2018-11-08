@@ -7,6 +7,7 @@
 
 #include <type_traits>
 
+#include <foonathan/tiny/tiny_bool.hpp>
 #include <foonathan/tiny/tombstone.hpp>
 
 namespace foonathan

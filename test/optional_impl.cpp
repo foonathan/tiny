@@ -6,6 +6,8 @@
 
 #include <catch.hpp>
 
+#include <foonathan/tiny/tiny_enum.hpp>
+
 using namespace foonathan::tiny;
 
 namespace
@@ -27,7 +29,25 @@ void verify_optional_impl(const T& obj, bool is_compressed)
     opt.destroy_value();
     REQUIRE(!opt.has_value());
 }
+
+enum class foo
+{
+    a,
+    b,
+    c,
+    _unsigned_count,
+};
 } // namespace
+
+namespace foonathan
+{
+namespace tiny
+{
+    template <>
+    struct tombstone_traits<foo> : tombstone_traits<tiny_enum<foo>>
+    {};
+} // namespace tiny
+} // namespace foonathan
 
 TEST_CASE("optional_impl")
 {
@@ -49,13 +69,6 @@ TEST_CASE("optional_impl")
     }
     SECTION("compressed: enum")
     {
-        enum class foo
-        {
-            a,
-            b,
-            c,
-            _unsigned_count,
-        };
         verify_optional_impl(foo::a, true);
         verify_optional_impl(foo::b, true);
         verify_optional_impl(foo::c, true);

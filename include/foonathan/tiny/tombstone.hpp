@@ -9,8 +9,6 @@
 #include <new>
 
 #include <foonathan/tiny/padding_traits.hpp>
-#include <foonathan/tiny/tiny_bool.hpp>
-#include <foonathan/tiny/tiny_enum.hpp>
 #include <foonathan/tiny/tiny_int.hpp>
 #include <foonathan/tiny/tiny_storage.hpp>
 
@@ -359,31 +357,50 @@ namespace tiny
         }
     };
 
-    /// Specialization of the tombstone traits for `bool` by forwarding to `tiny_bool`.
+    /// Specialization of the tombstone traits for `bool`.
+    ///
+    /// This does not behave like `tiny_bool` would, but instead works without proxy types.
+    /// \notes It assumes that `true` has bit pattern `00...01` and `false` pattern `00...00`.
     template <>
-    struct tombstone_traits<bool> : tombstone_traits<tiny_bool>
-    {};
-
-    namespace tombstone_detail
+    struct tombstone_traits<bool>
     {
-        template <typename Enum>
-        struct enable_enum_impl
+        using object_type     = bool;
+        using storage_type    = bool;
+        using reference       = bool&;
+        using const_reference = const bool&;
+
+        static constexpr std::size_t tombstone_count = (1u << (CHAR_BIT - 1)) - 1;
+
+        static void create_tombstone(storage_type& storage, std::size_t index) noexcept
         {
-            using type = typename std::enable_if<enum_traits<Enum>::is_contiguous
-                                                 && enum_traits<Enum>::min() == Enum(0)>::type;
-        };
+            // add one so that the higher bits are never zero
+            reinterpret_cast<unsigned char&>(storage)
+                = static_cast<unsigned char>((index + 1) << 1);
+        }
 
-        template <typename Enum>
-        using enable_enum = typename std::conditional<std::is_enum<Enum>::value,
-                                                      enable_enum_impl<Enum>, void>::type::type;
-    } // namespace tombstone_detail
+        static void create_object(storage_type& storage, bool obj) noexcept
+        {
+            storage = obj;
+        }
 
-    /// Specialization of the tombstone traits for unsigned contiguous enums by forwarding to
-    /// `tiny_enum`.
-    template <typename Enum>
-    struct tombstone_traits<Enum, tombstone_detail::enable_enum<Enum>>
-    : tombstone_traits<tiny_enum<Enum>>
-    {};
+        static void destroy_object(storage_type&) noexcept {}
+
+        static std::size_t get_tombstone(storage_type storage) noexcept
+        {
+            auto bits = std::size_t(reinterpret_cast<unsigned char&>(storage) >> 1);
+            // unconditionally subtract one, will overflow correctly
+            return bits - 1;
+        }
+
+        static reference get_object(storage_type& storage) noexcept
+        {
+            return storage;
+        }
+        static const_reference get_object(const storage_type& storage) noexcept
+        {
+            return storage;
+        }
+    };
 
     //=== tombstone_traits for pointers ===//
     /// \exclude

@@ -7,18 +7,32 @@
 
 #include <debug_assert.hpp>
 
+#ifndef FOONATHAN_TINY_ENABLE_ASSERTIONS
+#    define FOONATHAN_TINY_ENABLE_ASSERTIONS 0
+#endif
+
+#ifndef FOONATHAN_TINY_ENABLE_PRECONDITIONS
+#    ifdef NDEBUG
+#        define FOONATHAN_TINY_ENABLE_PRECONDITIONS 0
+#    else
+#        define FOONATHAN_TINY_ENABLE_PRECONDITIONS 1
+#    endif
+#endif
+
 namespace foonathan
 {
 namespace tiny
 {
     namespace detail
     {
-        // TODO: customizable level
-        struct precondition_handler : debug_assert::default_handler,
-                                      debug_assert::set_level<unsigned(-1)>
+        struct assert_handler
+        : debug_assert::default_handler,
+          debug_assert::set_level<static_cast<unsigned>(FOONATHAN_TINY_ENABLE_ASSERTIONS)>
         {};
 
-        struct assert_handler : debug_assert::default_handler, debug_assert::set_level<unsigned(-1)>
+        struct precondition_handler
+        : debug_assert::default_handler,
+          debug_assert::set_level<static_cast<unsigned>(FOONATHAN_TINY_ENABLE_PRECONDITIONS)>
         {};
     } // namespace detail
 } // namespace tiny

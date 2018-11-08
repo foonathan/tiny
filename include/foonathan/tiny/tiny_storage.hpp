@@ -294,7 +294,6 @@ namespace tiny
 
     namespace tiny_storage_detail
     {
-        //=== embedded_storage_policy ===//
         template <class... TinyTypes>
         class embedded_storage_policy
         {

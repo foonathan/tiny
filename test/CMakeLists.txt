@@ -2,6 +2,7 @@
 # This file is subject to the license terms in the LICENSE file
 # found in the top-level directory of this distribution.
 
+# get Catch
 if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/catch.hpp)
     file(DOWNLOAD
          https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp
@@ -18,6 +19,31 @@ if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/catch.hpp)
     endif()
 endif()
 
+# define dummy target with all the options
+# can't link to foonathan_lex, as it adds a SYSTEM interface
+add_library(foonathan_tiny_test_base INTERFACE)
+target_sources(foonathan_tiny_test_base INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/test.cpp)
+target_include_directories(foonathan_tiny_test_base INTERFACE
+                               ${CMAKE_CURRENT_SOURCE_DIR}
+                               ${CMAKE_CURRENT_SOURCE_DIR}/../include
+                           SYSTEM INTERFACE
+                               ${CMAKE_CURRENT_BINARY_DIR})
+target_compile_features(foonathan_tiny_test_base INTERFACE cxx_std_14)
+target_link_libraries(foonathan_tiny_test_base INTERFACE debug_assert)
+target_compile_definitions(foonathan_tiny_test_base INTERFACE
+                           FOONATHAN_TINY_ENABLE_ASSERTIONS=1
+                           FOONATHAN_TINY_ENABLE_PRECONDITIONS=1)
+target_compile_options(foonathan_tiny_test_base INTERFACE
+                       # clang/GCC warnings
+                       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+                           -pedantic-errors -Werror -Wall -Wextra -Wconversion -Wsign-conversion>
+                       # disable noexcept type warning on GCC
+                       $<$<CXX_COMPILER_ID:GNU>: -Wno-noexcept-type>
+                       # MSVC warnings
+                       $<$<CXX_COMPILER_ID:MSVC>:
+                           /WX /W4>)
+
+# unit tests
 set(tests
     bit_view.cpp
     check_size.cpp
@@ -30,11 +56,7 @@ set(tests
     tiny_types.cpp
     tiny_storage.cpp)
 
-add_executable(foonathan_tiny_test
-               test.cpp
-               ${tests})
-target_include_directories(foonathan_tiny_test SYSTEM PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(foonathan_tiny_test PUBLIC foonathan_tiny)
-set_target_properties(foonathan_tiny_test PROPERTIES CXX_STANDARD 11)
-
+add_executable(foonathan_tiny_test ${tests})
+target_link_libraries(foonathan_tiny_test PUBLIC foonathan_tiny_test_base)
 add_test(NAME test COMMAND foonathan_tiny_test)
+

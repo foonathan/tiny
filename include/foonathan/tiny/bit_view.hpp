@@ -121,8 +121,8 @@ namespace tiny
 
             static void put(Integer* pointer, std::uintmax_t bits) noexcept
             {
-                pointer[Index] &= static_cast<Integer>(~mask);
-                pointer[Index] |= static_cast<Integer>((bits << BeginBit) & mask);
+                pointer[Index] = static_cast<Integer>(pointer[Index] & ~mask);
+                pointer[Index] = static_cast<Integer>(pointer[Index] | ((bits << BeginBit) & mask));
             }
         };
 

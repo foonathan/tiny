@@ -39,12 +39,8 @@ jobs:
          IMAGE: 'conanio/clang60'
       clang7:
          IMAGE: 'conanio/clang7'
-      DefaultGCC:
-         IMAGE: 'foonathan/micro_cpp_gcc'
-      DefaultClang:
-         IMAGE: 'foonathan/micro_cpp_clang'
   steps:
-    - script: docker run -u root -v "$PWD:/tiny" $(IMAGE) bash -c "cmake /tiny/ && cmake --build . && ctest --output-on-failure"
+    - script: docker run --privileged -u root -v "$PWD:/tiny" $(IMAGE) bash -c "cmake /tiny/ && cmake --build . && ctest --output-on-failure"
       displayName: "Compiling using $(IMAGE)"
 
 - job: macos

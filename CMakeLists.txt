@@ -57,7 +57,7 @@ if(NOT dependency_via_submodule)
     install(FILES foonathan_tiny-config.cmake ${CMAKE_CURRENT_BINARY_DIR}/foonathan_tiny-config-version.cmake
             DESTINATION lib/cmake/foonathan_tiny)
 else()
-    message(STATUS "dependency installed via submodule, installation unavailable")
+    message(STATUS "Dependency installed via submodule, installation unavailable")
 endif()
 
 # subdirectories

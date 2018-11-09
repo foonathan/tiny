@@ -164,8 +164,9 @@ namespace tiny
 
             static void put_head(Integer* pointer, std::uintmax_t bits) noexcept
             {
-                pointer[BeginIndex] &= static_cast<Integer>(~mask);
-                pointer[BeginIndex] |= static_cast<Integer>((bits << BeginBit) & mask);
+                pointer[BeginIndex] = static_cast<Integer>(pointer[BeginIndex] & ~mask);
+                pointer[BeginIndex]
+                    = static_cast<Integer>(pointer[BeginIndex] | ((bits << BeginBit) & mask));
             }
 
             using tail = bit_loop_extracter<Integer, BeginIndex, BeginBit, EndIndex, EndBit,
@@ -198,8 +199,8 @@ namespace tiny
 
             static void put(Integer* pointer, std::uintmax_t bits) noexcept
             {
-                pointer[EndIndex] &= static_cast<Integer>(~mask);
-                pointer[EndIndex] |= static_cast<Integer>(bits & mask);
+                pointer[EndIndex] = static_cast<Integer>(pointer[EndIndex] & ~mask);
+                pointer[EndIndex] = static_cast<Integer>(pointer[EndIndex] | (bits & mask));
             }
         };
     } // namespace bit_view_detail

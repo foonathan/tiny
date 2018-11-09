@@ -281,7 +281,7 @@ namespace tiny
             // else: data - 1 is index
             // we can unconditionally subtract one, if zero, it overflows and we have an invalid
             // index
-            return data - 1;
+            return static_cast<std::size_t>(data - 1);
         }
 
         static reference get_object(storage_type& storage) noexcept

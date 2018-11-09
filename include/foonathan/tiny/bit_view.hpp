@@ -16,7 +16,8 @@ namespace foonathan
 {
 namespace tiny
 {
-    namespace detail
+    /// \ecxlude
+    namespace bit_view_detail
     {
         //=== bit_reference ===//
         class bit_reference
@@ -201,7 +202,7 @@ namespace tiny
                 pointer[EndIndex] |= static_cast<Integer>(bits & mask);
             }
         };
-    } // namespace detail
+    } // namespace bit_view_detail
 
     /// Constant to mark the remaining bits in an integer.
     ///
@@ -219,17 +220,22 @@ namespace tiny
         using unsigned_integer = typename std::make_unsigned<Integer>::type;
         using is_const         = std::is_const<Integer>;
 
+        // workaround for MSVC
+        static constexpr std::size_t begin_
+            = Begin == last_bit ? sizeof(Integer) * CHAR_BIT : Begin;
+        static constexpr std::size_t end_ = End == last_bit ? sizeof(Integer) * CHAR_BIT : End;
+
     public:
         /// \returns The begin index.
         static constexpr std::size_t begin() noexcept
         {
-            return Begin == last_bit ? sizeof(Integer) * CHAR_BIT : Begin;
+            return begin_;
         }
 
         /// \returns The end index.
         static constexpr std::size_t end() noexcept
         {
-            return End == last_bit ? sizeof(Integer) * CHAR_BIT : End;
+            return end_;
         }
 
         /// \returns The number of bits.
@@ -269,10 +275,11 @@ namespace tiny
         /// \returns A boolean reference to the given bit.
         /// \requires `i < size()`.
         /// \notes The index is in the range `[0, size())`, where `0` is the `Begin` bit.
-        detail::bit_reference_for<unsigned_integer> operator[](std::size_t i) const noexcept
+        bit_view_detail::bit_reference_for<unsigned_integer> operator[](std::size_t i) const
+            noexcept
         {
             DEBUG_ASSERT(i < size(), detail::precondition_handler{}, "index out of range");
-            return detail::make_bit_reference(pointer_, Begin + i);
+            return bit_view_detail::make_bit_reference(pointer_, Begin + i);
         }
 
         /// \returns An integer containing the viewed bits in the `size()` lower bits.
@@ -292,7 +299,7 @@ namespace tiny
         }
 
     private:
-        using extracter = detail::bit_single_extracter<unsigned_integer, 0, begin(), end()>;
+        using extracter = bit_view_detail::bit_single_extracter<unsigned_integer, 0, begin_, end_>;
 
         unsigned_integer* pointer_;
 
@@ -389,18 +396,20 @@ namespace tiny
         /// \returns A boolean reference to the given bit.
         /// \requires `i < size()`.
         /// \notes The index is in the range `[0, size())`, where `0` is the `Begin` bit.
-        detail::bit_reference_for<unsigned_integer> operator[](std::size_t i) const noexcept
+        bit_view_detail::bit_reference_for<unsigned_integer> operator[](std::size_t i) const
+            noexcept
         {
             DEBUG_ASSERT(i < size(), detail::precondition_handler{}, "index out of range");
             auto offset_i = i + begin();
-            return detail::make_bit_reference(&pointer_[array_index(offset_i)],
-                                              bit_index(offset_i));
+            return bit_view_detail::make_bit_reference(&pointer_[array_index(offset_i)],
+                                                       bit_index(offset_i));
         }
 
         /// \returns An integer containing the viewed bits in the `size()` lower bits.
         std::uintmax_t extract() const noexcept
         {
-            static_assert(size() <= detail::max_extract_bits, "too many bits to extract at once");
+            static_assert(size() <= bit_view_detail::max_extract_bits,
+                          "too many bits to extract at once");
             return extract(std::integral_constant<bool, begin_index != end_index>{});
         }
 
@@ -410,7 +419,8 @@ namespace tiny
         template <typename T = Integer>
         void put(std::uintmax_t bits) const noexcept
         {
-            static_assert(size() <= detail::max_extract_bits, "too many bits to put at once");
+            static_assert(size() <= bit_view_detail::max_extract_bits,
+                          "too many bits to put at once");
             static_assert(!std::is_const<T>::value, "cannot put in a view to const");
             put(std::integral_constant<bool, begin_index != end_index>{}, bits);
         }
@@ -418,28 +428,28 @@ namespace tiny
     private:
         std::uintmax_t extract(std::false_type /* single element */) const noexcept
         {
-            return detail::bit_single_extracter<unsigned_integer, begin_index, begin_bit_index,
-                                                end_bit_index>::extract(pointer_);
+            return bit_view_detail::bit_single_extracter<
+                unsigned_integer, begin_index, begin_bit_index, end_bit_index>::extract(pointer_);
         }
 
         void put(std::false_type /* single element */, std::uintmax_t bits) const noexcept
         {
-            detail::bit_single_extracter<unsigned_integer, begin_index, begin_bit_index,
-                                         end_bit_index>::put(pointer_, bits);
+            bit_view_detail::bit_single_extracter<unsigned_integer, begin_index, begin_bit_index,
+                                                  end_bit_index>::put(pointer_, bits);
         }
 
         std::uintmax_t extract(std::true_type /* multiple elements */) const noexcept
         {
-            return detail::bit_loop_extracter<unsigned_integer, begin_index, begin_bit_index,
-                                              end_index, end_bit_index,
-                                              begin_index>::extract(pointer_);
+            return bit_view_detail::bit_loop_extracter<unsigned_integer, begin_index,
+                                                       begin_bit_index, end_index, end_bit_index,
+                                                       begin_index>::extract(pointer_);
         }
 
         void put(std::true_type /* multiple elements */, std::uintmax_t bits) const noexcept
         {
-            return detail::bit_loop_extracter<unsigned_integer, begin_index, begin_bit_index,
-                                              end_index, end_bit_index, begin_index>::put(pointer_,
-                                                                                          bits);
+            return bit_view_detail::bit_loop_extracter<unsigned_integer, begin_index,
+                                                       begin_bit_index, end_index, end_bit_index,
+                                                       begin_index>::put(pointer_, bits);
         }
 
         explicit bit_view(int, unsigned_integer* ptr) noexcept : pointer_(ptr) {}
@@ -543,19 +553,22 @@ namespace tiny
         /// \returns A boolean reference to the given bit.
         /// \requires `i < size()`.
         /// \notes The index is in the range `[0, size())`, where `0` is the first bit.
-        detail::bit_reference_for_impl<is_const::value> operator[](std::size_t i) const noexcept
+        bit_view_detail::bit_reference_for_impl<is_const::value> operator[](std::size_t i) const
+            noexcept
         {
             DEBUG_ASSERT(i < size(), detail::precondition_handler{}, "index out of range");
             if (i < head_.size())
-                return detail::bit_reference_for_impl<is_const::value>(head_[i]);
+                return bit_view_detail::bit_reference_for_impl<is_const::value>(head_[i]);
             else
-                return detail::bit_reference_for_impl<is_const::value>(tail_[i - head_.size()]);
+                return bit_view_detail::bit_reference_for_impl<is_const::value>(
+                    tail_[i - head_.size()]);
         }
 
         /// \returns An integer containing the viewed bits in the `size()` lower bits.
         std::uintmax_t extract() const noexcept
         {
-            static_assert(size() <= detail::max_extract_bits, "too many bits to extract at once");
+            static_assert(size() <= bit_view_detail::max_extract_bits,
+                          "too many bits to extract at once");
 
             auto head = head_.extract();
             auto tail = tail_.extract();
@@ -568,7 +581,8 @@ namespace tiny
         template <typename T = Integer>
         void put(std::uintmax_t bits) const noexcept
         {
-            static_assert(size() <= detail::max_extract_bits, "too many bits to put at once");
+            static_assert(size() <= bit_view_detail::max_extract_bits,
+                          "too many bits to put at once");
             static_assert(!std::is_const<T>::value, "cannot put in a view to const");
             head_.put(bits);
             tail_.put(bits >> head_.size());
@@ -582,7 +596,8 @@ namespace tiny
         friend class bit_view;
     };
 
-    namespace detail
+    /// \exclude
+    namespace bit_view_detail
     {
         template <class... BitViews>
         struct joined_bit_view_impl;
@@ -606,58 +621,72 @@ namespace tiny
         {
             using type = bit_view<Integer, Begin, End>;
         };
-    } // namespace detail
+    } // namespace bit_view_detail
 
     /// A bit view that concatenates the other bit views in order.
     ///
     /// It first views the bits from the first view, then from the second, and so on.
     template <class... BitViews>
-    using joined_bit_view = typename detail::joined_bit_view_impl<BitViews...>::type;
+    using joined_bit_view = typename bit_view_detail::joined_bit_view_impl<BitViews...>::type;
 
-    namespace detail
+    /// \exclude
+    namespace bit_view_detail
     {
+        template <std::size_t>
+        struct tag
+        {};
+
+        struct overload
+        {
+            template <std::size_t I>
+            operator tag<I>() const noexcept
+            {
+                return {};
+            }
+        };
+
         template <typename Head>
-        joined_bit_view<Head> join_bit_views_impl(Head h) noexcept
+        joined_bit_view<Head> join_bit_views_impl(overload, Head h) noexcept
         {
             return h;
         }
 
         template <typename Head, typename... Tail>
-        auto join_bit_views_impl(Head h, Tail... tail) noexcept ->
+        auto join_bit_views_impl(tag<0>, Head h, Tail... tail) noexcept ->
             typename std::enable_if<Head::size() != 0 && joined_bit_view<Tail...>::size() != 0,
                                     joined_bit_view<Head, Tail...>>::type
         {
-            auto tail_view = join_bit_views_impl(tail...);
+            auto tail_view = join_bit_views_impl(overload{}, tail...);
             return {h, tail_view};
         }
         template <typename Head, typename... Tail>
-        auto join_bit_views_impl(Head h, Tail...) noexcept ->
+        auto join_bit_views_impl(tag<1>, Head h, Tail...) noexcept ->
             typename std::enable_if<Head::size() != 0 && joined_bit_view<Tail...>::size() == 0,
                                     joined_bit_view<Head, Tail...>>::type
         {
             return h;
         }
         template <typename Head, typename... Tail>
-        auto join_bit_views_impl(Head, Tail... tail) noexcept ->
+        auto join_bit_views_impl(tag<2>, Head, Tail... tail) noexcept ->
             typename std::enable_if<Head::size() == 0 && joined_bit_view<Tail...>::size() != 0,
                                     joined_bit_view<Head, Tail...>>::type
         {
-            return join_bit_views_impl(tail...);
+            return join_bit_views_impl(overload{}, tail...);
         }
         template <typename Head, typename... Tail>
-        auto join_bit_views_impl(Head h, Tail...) noexcept ->
+        auto join_bit_views_impl(tag<3>, Head h, Tail...) noexcept ->
             typename std::enable_if<Head::size() == 0 && joined_bit_view<Tail...>::size() == 0,
                                     joined_bit_view<Head, Tail...>>::type
         {
             return h;
         }
-    } // namespace detail
+    } // namespace bit_view_detail
 
     /// \returns A joined bit view from the given views.
     template <class... BitViews>
     joined_bit_view<BitViews...> join_bit_views(BitViews... views) noexcept
     {
-        return detail::join_bit_views_impl(views...);
+        return bit_view_detail::join_bit_views_impl(bit_view_detail::overload{}, views...);
     }
 
     //=== bit_view convenience functions ===//
@@ -715,15 +744,16 @@ namespace tiny
         return clear_bits<End, last_bit>(i);
     }
 
-    namespace detail
+    /// \exclude
+    namespace bit_view_detail
     {
         template <class BitView, class OtherBitView>
-        auto copy_bits_impl(BitView, OtherBitView) ->
+        auto copy_bits_impl(tag<0>, BitView, OtherBitView) noexcept ->
             typename std::enable_if<BitView::size() == 0>::type
         {}
 
         template <class BitView, class OtherBitView>
-        auto copy_bits_impl(BitView dest, OtherBitView src) noexcept ->
+        auto copy_bits_impl(tag<1>, BitView dest, OtherBitView src) noexcept ->
             typename std::enable_if<(BitView::size() > 0)
                                     && BitView::size() <= max_extract_bits>::type
         {
@@ -731,7 +761,7 @@ namespace tiny
         }
 
         template <class BitView, class OtherBitView>
-        auto copy_bits_impl(std::false_type, BitView dest, OtherBitView src) noexcept ->
+        auto copy_bits_impl(tag<2>, std::false_type, BitView dest, OtherBitView src) noexcept ->
             typename std::enable_if<(BitView::size() > max_extract_bits)>::type
         {
             dest.template subview<0, max_extract_bits>().put(
@@ -739,7 +769,7 @@ namespace tiny
             copy_bits_impl(dest.template subview<max_extract_bits, last_bit>(),
                            src.template subview<max_extract_bits, last_bit>());
         }
-    } // namespace detail
+    } // namespace bit_view_detail
 
     /// \effects Copies the bits from `src` to `dest`.
     template <typename Integer, std::size_t Begin, std::size_t End, typename OtherInteger,
@@ -749,17 +779,18 @@ namespace tiny
     {
         static_assert(decltype(dest)::size() == decltype(src)::size(),
                       "bit views must have the same sizes");
-        detail::copy_bits_impl(dest, src);
+        bit_view_detail::copy_bits_impl(bit_view_detail::overload{}, dest, src);
     }
 
-    namespace detail
+    /// \exclude
+    namespace bit_view_detail
     {
         template <class BitView>
-        auto clear_bits_impl(BitView) -> typename std::enable_if<BitView::size() == 0>::type
+        auto clear_bits_impl(tag<0>, BitView) -> typename std::enable_if<BitView::size() == 0>::type
         {}
 
         template <class BitView>
-        auto clear_bits_impl(BitView view) ->
+        auto clear_bits_impl(tag<1>, BitView view) ->
             typename std::enable_if<(BitView::size() > 0)
                                     && BitView::size() <= max_extract_bits>::type
         {
@@ -767,18 +798,18 @@ namespace tiny
         }
 
         template <class BitView>
-        auto clear_bits_impl(BitView view) ->
+        auto clear_bits_impl(tag<2>, BitView view) ->
             typename std::enable_if<(BitView::size() > max_extract_bits)>::type
         {
             view.template subview<0, max_extract_bits>().put(0);
             clear_bits_impl(view.template subview<max_extract_bits, last_bit>());
         }
-    } // namespace detail
+    } // namespace bit_view_detail
 
     template <typename Integer, std::size_t Begin, std::size_t End>
     void clear_bits(bit_view<Integer, Begin, End> view) noexcept
     {
-        detail::clear_bits_impl(view);
+        bit_view_detail::clear_bits_impl(bit_view_detail::overload{}, view);
     }
 } // namespace tiny
 } // namespace foonathan

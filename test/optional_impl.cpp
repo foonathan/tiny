@@ -15,8 +15,11 @@ namespace
 template <typename T>
 void verify_optional_impl(const T& obj, bool is_compressed)
 {
+#if !defined(_MSC_VER)
+    // types with deleted ctors are not trivial on MSVC
     REQUIRE(std::is_trivially_copyable<T>::value
             == std::is_trivially_copyable<optional_impl<T>>::value);
+#endif
     REQUIRE(optional_impl<T>::is_compressed::value == is_compressed);
 
     optional_impl<T> opt;
@@ -76,7 +79,11 @@ TEST_CASE("optional_impl")
     SECTION("compressed: optional optional bool")
     {
         using opt_t = optional_impl<optional_impl<bool>>;
+
+#if !defined(_MSC_VER)
+        // types with deleted ctors are not trivial on MSVC
         REQUIRE(std::is_trivially_copyable<opt_t>::value);
+#endif
         REQUIRE(opt_t::is_compressed::value);
 
         opt_t opt;
@@ -106,7 +113,10 @@ TEST_CASE("optional_impl")
     SECTION("compressed: optional optional int")
     {
         using opt_t = optional_impl<optional_impl<int>>;
+#if !defined(_MSC_VER)
+        // types with deleted ctors are not trivial on MSVC
         REQUIRE(std::is_trivially_copyable<opt_t>::value);
+#endif
         REQUIRE(opt_t::is_compressed::value);
 
         opt_t opt;

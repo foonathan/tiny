@@ -33,7 +33,13 @@ namespace tiny
 
         //=== storage type ===//
         template <typename... Ts>
-        using pointer_variant_value_type = aligned_obj<const void, min(alignment_of<Ts>()...)>;
+        constexpr std::size_t min_alignment_of() noexcept
+        {
+            return min(alignment_of<Ts>()...);
+        }
+
+        template <typename... Ts>
+        using pointer_variant_value_type = aligned_obj<const void, min_alignment_of<Ts...>()>;
 
         template <typename... Ts>
         using pointer_variant_tag = tiny_unsigned<detail::ilog2_ceil(sizeof...(Ts)), std::size_t>;

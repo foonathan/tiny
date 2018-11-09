@@ -19,34 +19,34 @@ void verify_pointer_assignment(Storage& s, unsigned tiny_value)
 
     s.pointer() = array;
     REQUIRE(s.tiny() == tiny_value);
-    REQUIRE(s.pointer() == array);
+    REQUIRE((s.pointer() == array));
 
     s.pointer() += 2;
     REQUIRE(s.tiny() == tiny_value);
-    REQUIRE(s.pointer() == array + 2);
+    REQUIRE((s.pointer() == array + 2));
 
     s.pointer() -= 1;
     REQUIRE(s.tiny() == tiny_value);
-    REQUIRE(s.pointer() == array + 1);
+    REQUIRE((s.pointer() == array + 1));
 
     auto ptr = s.pointer()++;
     REQUIRE(s.tiny() == tiny_value);
-    REQUIRE(s.pointer() == array + 2);
+    REQUIRE((s.pointer() == array + 2));
     REQUIRE(ptr == array + 1);
 
     ptr = ++s.pointer();
     REQUIRE(s.tiny() == tiny_value);
-    REQUIRE(s.pointer() == array + 3);
+    REQUIRE((s.pointer() == array + 3));
     REQUIRE(ptr == array + 3);
 
     ptr = s.pointer()--;
     REQUIRE(s.tiny() == tiny_value);
-    REQUIRE(s.pointer() == array + 2);
+    REQUIRE((s.pointer() == array + 2));
     REQUIRE(ptr == array + 3);
 
     ptr = --s.pointer();
     REQUIRE(s.tiny() == tiny_value);
-    REQUIRE(s.pointer() == array + 1);
+    REQUIRE((s.pointer() == array + 1));
     REQUIRE(ptr == array + 1);
 }
 } // namespace
@@ -60,15 +60,15 @@ TEST_CASE("pointer_tiny_storage")
 
         storage s;
         REQUIRE(s.tiny() == 0);
-        REQUIRE(s.pointer() == nullptr);
+        REQUIRE((s.pointer() == nullptr));
 
         s.tiny() = 3;
         REQUIRE(s.tiny() == 3);
-        REQUIRE(s.pointer() == nullptr);
+        REQUIRE((s.pointer() == nullptr));
 
         const auto& cs = s;
         REQUIRE(cs.tiny() == 3);
-        REQUIRE(cs.pointer() == nullptr);
+        REQUIRE((cs.pointer() == nullptr));
 
         verify_pointer_assignment(s, 3);
     }
@@ -79,20 +79,20 @@ TEST_CASE("pointer_tiny_storage")
 
         storage s;
         REQUIRE(s.tiny() == 0);
-        REQUIRE(s.pointer() == nullptr);
+        REQUIRE((s.pointer() == nullptr));
 
         s.tiny() = 7;
         REQUIRE(s.tiny() == 7);
-        REQUIRE(s.pointer() == nullptr);
+        REQUIRE((s.pointer() == nullptr));
 
         const auto& cs = s;
         REQUIRE(cs.tiny() == 7);
-        REQUIRE(cs.pointer() == nullptr);
+        REQUIRE((cs.pointer() == nullptr));
 
         alignas(8) int value = 0;
         s.pointer()          = &value;
         REQUIRE(s.tiny() == 7);
-        REQUIRE(s.pointer() == &value);
+        REQUIRE((s.pointer() == &value));
     }
     SECTION("not compressed")
     {
@@ -101,15 +101,15 @@ TEST_CASE("pointer_tiny_storage")
 
         storage s;
         REQUIRE(s.tiny() == 0);
-        REQUIRE(s.pointer() == nullptr);
+        REQUIRE((s.pointer() == nullptr));
 
         s.tiny() = 7;
         REQUIRE(s.tiny() == 7);
-        REQUIRE(s.pointer() == nullptr);
+        REQUIRE((s.pointer() == nullptr));
 
         const auto& cs = s;
         REQUIRE(cs.tiny() == 7);
-        REQUIRE(cs.pointer() == nullptr);
+        REQUIRE((cs.pointer() == nullptr));
 
         verify_pointer_assignment(s, 7);
     }

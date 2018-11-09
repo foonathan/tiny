@@ -88,7 +88,7 @@ namespace tiny
                 DEBUG_ASSERT((are_cleared_bits<0, compressed_size>(as_int)),
                              detail::precondition_handler{}, "invalid alignment of pointer");
                 auto tiny_bits = extract_bits<0, compressed_size>(storage_.ptr);
-                storage_.ptr   = as_int | tiny_bits;
+                storage_.ptr   = static_cast<std::uintptr_t>(as_int | tiny_bits);
             }
 
             template <typename T>

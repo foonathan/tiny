@@ -15,17 +15,10 @@ namespace foonathan
 namespace tiny
 {
     //=== enum traits ===//
-    /// The traits of an enum.
-    ///
-    /// Specialize it for your own types,
-    /// either by manually specifying the required members or by inheriting from the provided
-    /// implementations.
-    ///
-    /// \notes You are encouraged to use SFINAE on the second defaulted parameter.
-    template <typename Enum, typename = void>
-    struct enum_traits
+    /// The default enum traits implementation.
+    template <typename Enum>
+    class enum_traits_default
     {
-    private:
         static_assert(std::is_enum<Enum>::value, "not an enum");
         using underlying_type = typename std::underlying_type<Enum>::type;
 
@@ -79,42 +72,12 @@ namespace tiny
         static constexpr auto is_contiguous = true;
     };
 
-    /// Specialization for the enum traits for enums with an enumerator `_unsigned_max` or
-    /// `unsigned_max_`. It will treat it as an unsigned enum with that enumerator being the max
-    /// value.
-    ///
-    /// \group spec_unsigned
-    template <typename Enum>
-    struct enum_traits<Enum, decltype((void)Enum::_unsigned_max)>
-    : enum_traits_unsigned<Enum, Enum::_unsigned_max>
-    {};
-    /// \group spec_unsigned
-    template <typename Enum>
-    struct enum_traits<Enum, decltype((void)Enum::unsigned_max_)>
-    : enum_traits_unsigned<Enum, Enum::unsigned_max_>
-    {};
-
     /// Enum traits implementation that assumes the enum values are contiguous in the range `[0,
     /// Count]`.
     template <typename Enum, Enum Count>
     struct enum_traits_unsigned_count
     : enum_traits_unsigned<Enum,
                            Enum(static_cast<typename std::underlying_type<Enum>::type>(Count) - 1)>
-    {};
-
-    /// Specialization for the enum traits for enums with an enumerator `_unsigned_count` or
-    /// `unsigned_count_`. It will treat it as an unsigned enum with that enumerator specifying
-    /// the count.
-    ///
-    /// \group spec_unsigned_count
-    template <typename Enum>
-    struct enum_traits<Enum, decltype((void)Enum::_unsigned_count)>
-    : enum_traits_unsigned_count<Enum, Enum::_unsigned_count>
-    {};
-    /// \group spec_unsigned_count
-    template <typename Enum>
-    struct enum_traits<Enum, decltype((void)Enum::unsigned_count_)>
-    : enum_traits_unsigned_count<Enum, Enum::unsigned_count_>
     {};
 
     /// Enum traits implementation that assumes the enum values are contiguous in the range
@@ -140,8 +103,59 @@ namespace tiny
         static constexpr auto is_contiguous = true;
     };
 
+    namespace enum_traits_detail
+    {
+        template <std::size_t>
+        struct tag
+        {};
+
+        struct overload
+        {
+            template <std::size_t I>
+            operator tag<I>() const noexcept
+            {
+                return {};
+            }
+        };
+
+        template <typename Enum>
+        enum_traits_default<Enum> enum_traits_for(...);
+
+        template <typename Enum>
+        enum_traits_unsigned_count<Enum, Enum::_unsigned_count> enum_traits_for(tag<0>);
+        template <typename Enum>
+        enum_traits_unsigned_count<Enum, Enum::unsigned_count_> enum_traits_for(tag<1>);
+
+        template <typename Enum>
+        enum_traits_unsigned<Enum, Enum::_unsigned_max> enum_traits_for(tag<2>);
+        template <typename Enum>
+        enum_traits_unsigned<Enum, Enum::unsigned_max_> enum_traits_for(tag<3>);
+
+        template <typename Enum>
+        enum_traits_unsigned_count<Enum, Enum::_flag_count> enum_traits_for(tag<0>);
+        template <typename Enum>
+        enum_traits_unsigned_count<Enum, Enum::flag_count_> enum_traits_for(tag<1>);
+    } // namespace enum_traits_detail
+
+    /// The traits of an enum.
+    ///
+    /// Specialize it for your own types,
+    /// either by manually specifying the required members or by inheriting from the provided
+    /// implementations.
+    ///
+    /// Enums with an enumerator `_unsigned_count` or `unsigned_count_` will be treated as unsigned
+    /// enums with the specified count. Enums with an enumerator `_unsigned_max` or `unsigned_max_`
+    /// will be treated as unsigned enums with the specified max value. Enums with an enumerator
+    /// `_flag_count` or `flag_count_` will be treated as unsigned enums with the specified count.
+    /// They are meant for [tiny::flag_set]().
+    template <typename Enum>
+    struct enum_traits
+    : decltype(enum_traits_detail::enum_traits_for<Enum>(enum_traits_detail::overload{}))
+    {};
+
     //=== enum traits algorithm ===//
-    namespace detail
+    /// \exclude
+    namespace enum_traits_detail
     {
         template <bool IsEnum, class EnumOrTraits>
         struct traits_of_impl;
@@ -157,14 +171,15 @@ namespace tiny
         {
             using type = Traits;
         };
-    } // namespace detail
+    } // namespace enum_traits_detail
 
     /// If `EnumOrTraits` is an enum type, equivalent to `enum_traits<EnumOrTraits>`.
     /// Otherwise, expands to `EnumOrTraits` and assumes it has the same members as the
     /// `enum_traits`.
     template <class EnumOrTraits>
     using traits_of_enum =
-        typename detail::traits_of_impl<std::is_enum<EnumOrTraits>::value, EnumOrTraits>::type;
+        typename enum_traits_detail::traits_of_impl<std::is_enum<EnumOrTraits>::value,
+                                                    EnumOrTraits>::type;
 
     /// \returns The size of an enum, that is the number of valid enum values.
     /// \requires The enum must be contiguous.

@@ -13,23 +13,6 @@ namespace foonathan
 {
 namespace tiny
 {
-    /// Specialization for the enum traits for enums with an enumerator `_flag_count` or
-    /// `flag_count_`. It will treat it as an unsigned enum with that enumerator specifying
-    /// the count.
-    ///
-    /// This is meant to be used for enums that are used by [tiny::tiny_flag_set]().
-    ///
-    /// \group spec_flag_count
-    template <typename Enum>
-    struct enum_traits<Enum, decltype((void)Enum::_flag_count)>
-    : enum_traits_unsigned_count<Enum, Enum::_flag_count>
-    {};
-    /// \group spec_flag_count
-    template <typename Enum>
-    struct enum_traits<Enum, decltype((void)Enum::flag_count_)>
-    : enum_traits_unsigned_count<Enum, Enum::flag_count_>
-    {};
-
     namespace detail
     {
         template <typename Enum>

@@ -281,7 +281,7 @@ namespace tiny
             // else: data - 1 is index
             // we can unconditionally subtract one, if zero, it overflows and we have an invalid
             // index
-            return data - 1;
+            return static_cast<std::size_t>(data - 1);
         }
 
         static reference get_object(storage_type& storage) noexcept
@@ -385,9 +385,9 @@ namespace tiny
 
         static void destroy_object(storage_type&) noexcept {}
 
-        static std::size_t get_tombstone(storage_type storage) noexcept
+        static std::size_t get_tombstone(const storage_type& storage) noexcept
         {
-            auto bits = std::size_t(reinterpret_cast<unsigned char&>(storage) >> 1);
+            auto bits = std::size_t(reinterpret_cast<const unsigned char&>(storage) >> 1);
             // unconditionally subtract one, will overflow correctly
             return bits - 1;
         }

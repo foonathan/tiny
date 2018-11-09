@@ -1,5 +1,7 @@
 # foonathan/tiny
 
+[![Build Status](https://dev.azure.com/foonathan/tiny/_apis/build/status/foonathan.tiny)](https://dev.azure.com/foonathan/tiny/_build/latest?definitionId=3)
+
 > Note: This project is currently WIP, no guarantees are made until an 0.1 release.
 
 This project is a C++11 library for putting every last bit to good use.
@@ -98,6 +100,21 @@ A: Thanks. I do have a Patreon page, so consider checking it out:
 ## Documentation
 
 > A full reference documentation is WIP, look at the comments in the header files for now.
+
+Annotated tutorial style examples can be found in [the example directory](example/).
+
+### Compiler Support
+
+The library requires a C++11 compiler.
+Compilers that are being tested on CI:
+
+* Linux:
+    * GCC 5 to 8
+    * clang 4 to 7
+* MacOS:
+    * XCode 9 and 10
+* Windows:
+    * Visual Studio 2017
 
 ### Installation
 

@@ -219,7 +219,7 @@ namespace tiny
 
             static std::size_t get_tombstone(const storage_type& storage) noexcept
             {
-                return storage.impl_.flag.spare_bits().extract() - 1;
+                return static_cast<std::size_t>(storage.impl_.flag.spare_bits().extract() - 1);
             }
 
             static reference get_object(storage_type& storage) noexcept

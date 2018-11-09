@@ -5,7 +5,7 @@
 #ifndef FOONATHAN_TINY_DETAIL_ILOG2_HPP_INCLUDED
 #define FOONATHAN_TINY_DETAIL_ILOG2_HPP_INCLUDED
 
-#include <cstdint>
+#include <cstddef>
 
 namespace foonathan
 {

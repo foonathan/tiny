@@ -170,6 +170,9 @@ namespace tiny
                 this->storage_view().template subview<offset, offset + type::bit_size()>());
         }
 
+        struct default_ctor_tag
+        {};
+
     public:
         /// Whether or not the tiny types are stored without using extra space.
         using is_compressed = typename TinyStoragePolicy::is_compressed;
@@ -177,12 +180,16 @@ namespace tiny
         //=== constructors ===//
         /// Default constructor.
         /// \effects Initializes all tiny types to the value corresponding to all zeroes.
-        basic_tiny_storage() noexcept
+        /// \param 1
+        /// \exclude
+        template <typename T = default_ctor_tag>
+        basic_tiny_storage(typename std::enable_if<sizeof...(TinyTypes) != 0, T>::type
+                           = {}) noexcept
         {
             clear_bits(this->storage_view());
         }
 
-        /// Object constructor.
+        /// Object constructor.amazon
         /// \effects Initializes all tiny types from the corresponding object type.
         basic_tiny_storage(typename TinyTypes::object_type... objects) noexcept
         : basic_tiny_storage(detail::make_index_sequence<sizeof...(TinyTypes)>{}, objects...)
@@ -232,14 +239,14 @@ namespace tiny
         /// \requires Only one tiny type must be stored.
         /// \group tiny
         template <std::size_t Dummy = sizeof...(TinyTypes)>
-        auto tiny() noexcept -> proxy_of<std::integral_constant<std::size_t, 0>>
+        auto tiny() noexcept -> proxy_of<std::integral_constant<std::size_t, Dummy - 1>>
         {
             static_assert(Dummy == 1, "only allowed for 1 tiny type");
             return at<0>();
         }
         /// \group tiny
         template <std::size_t Dummy = sizeof...(TinyTypes)>
-        auto tiny() const noexcept -> cproxy_of<std::integral_constant<std::size_t, 0>>
+        auto tiny() const noexcept -> cproxy_of<std::integral_constant<std::size_t, Dummy - 1>>
         {
             static_assert(Dummy == 1, "only allowed for 1 tiny type");
             return at<0>();

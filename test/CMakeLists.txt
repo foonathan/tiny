@@ -20,7 +20,7 @@ if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/catch.hpp)
 endif()
 
 # define dummy target with all the options
-# can't link to foonathan_lex, as it adds a SYSTEM interface
+# can't link to foonathan_tiny, as it adds a SYSTEM interface
 add_library(foonathan_tiny_test_base INTERFACE)
 target_sources(foonathan_tiny_test_base INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/test.cpp)
 target_include_directories(foonathan_tiny_test_base INTERFACE
@@ -28,7 +28,7 @@ target_include_directories(foonathan_tiny_test_base INTERFACE
                                ${CMAKE_CURRENT_SOURCE_DIR}/../include
                            SYSTEM INTERFACE
                                ${CMAKE_CURRENT_BINARY_DIR})
-target_compile_features(foonathan_tiny_test_base INTERFACE cxx_std_14)
+target_compile_features(foonathan_tiny_test_base INTERFACE cxx_std_11)
 target_link_libraries(foonathan_tiny_test_base INTERFACE debug_assert)
 target_compile_definitions(foonathan_tiny_test_base INTERFACE
                            FOONATHAN_TINY_ENABLE_ASSERTIONS=1

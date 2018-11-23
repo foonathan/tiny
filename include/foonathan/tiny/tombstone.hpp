@@ -94,7 +94,7 @@ namespace tiny
         template <typename... Args>
         static void create_object(storage_type& storage, Args&&... args)
         {
-            ::new (static_cast<void*>(&storage.object)) T(static_cast<Args>(args)...);
+            ::new (static_cast<void*>(&storage.object)) T(static_cast<Args&&>(args)...);
         }
 
         /// \effects Destroys the object currently stored in the storage.
@@ -197,7 +197,7 @@ namespace tiny
         template <typename... Args>
         static void create_object(storage_type& storage, Args&&... args)
         {
-            ::new (static_cast<void*>(&storage.object)) T(static_cast<Args>(args)...);
+            ::new (static_cast<void*>(&storage.object)) T(static_cast<Args&&>(args)...);
         }
 
         static void destroy_object(storage_type& storage) noexcept
@@ -264,7 +264,7 @@ namespace tiny
         template <typename... Args>
         static void create_object(storage_type& storage, Args&&... args)
         {
-            ::new (static_cast<void*>(&storage.object)) T(static_cast<Args>(args)...);
+            ::new (static_cast<void*>(&storage.object)) T(static_cast<Args&&>(args)...);
             padding_of(storage.tombstone).template subview<0, tombstone_bits>().put(0);
         }
 
@@ -332,7 +332,7 @@ namespace tiny
         template <typename... Args>
         static void create_object(storage_type& storage, Args&&... args)
         {
-            storage.template at<0>() = object_type(static_cast<Args>(args)...);
+            storage.template at<0>() = object_type(static_cast<Args&&>(args)...);
             storage.template at<1>() = 0;
         }
 

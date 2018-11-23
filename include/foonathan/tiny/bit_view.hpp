@@ -531,9 +531,9 @@ namespace tiny
             joined_bit_view_tag<
                 decltype(std::declval<BitView>().template subview<0, SubEnd - head_view::size()>()),
                 Integer>,
-            Begin + SubBegin, End>
+            Begin + SubBegin, Begin + head_view::size()>
         {
-            auto head_sub = head_.template subview<Begin + SubBegin, End>();
+            auto head_sub = head_.template subview<SubBegin, head_view::size()>();
             auto tail_sub = tail_.template subview<0, SubEnd - head_view::size()>();
             return bit_view<joined_bit_view_tag<decltype(tail_sub), Integer>, head_view::begin(),
                             head_view::end()>(head_sub, tail_sub);

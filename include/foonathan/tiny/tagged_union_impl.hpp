@@ -29,7 +29,7 @@ namespace tiny
     struct union_types
     {
         /// \exclude
-        using tag = tiny_int_range<0, sizeof...(T), std::size_t>;
+        using tag = tiny_int_range<0, std::intmax_t(sizeof...(T)), std::size_t>;
 
         /// \exclude
         using storage = tagged_union_detail::types_storage<union_types<T...>, 0, T...>;

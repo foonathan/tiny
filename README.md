@@ -116,6 +116,19 @@ Compilers that are being tested on CI:
 * Windows:
     * Visual Studio 2017
 
+It only requires the following standard library headers:
+
+* `cstddef` and `cstdint`
+* `climits` and `limits`
+* `cstdlib` (for `std::abort`) and `cstring` (for `std::memcpy`)
+* `new` (for placement new only)
+* `type_traits`
+
+The `debug_assert` library optionally requires `cstdio` for printing messages to `stderr`.
+Defining `DEBUG_ASSERT_NO_STDIO` disables that.
+
+It does not use exceptions, RTTI or dynamic memory allocation.
+
 ### Installation
 
 The library is header-only and has only my [debug_assert](https://github.com/foonathan/debug_assert) library as dependency.

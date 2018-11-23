@@ -104,7 +104,7 @@ namespace tiny
         void create_value(Args&&... args)
         {
             DEBUG_ASSERT(!has_value(), detail::precondition_handler{});
-            traits::create_object(impl_.storage, static_cast<Args>(args)...);
+            traits::create_object(impl_.storage, static_cast<Args&&>(args)...);
             impl_.store_value_flag();
         }
 
@@ -112,6 +112,7 @@ namespace tiny
         /// \requires `has_value() == true`.
         void destroy_value() noexcept
         {
+            DEBUG_ASSERT(has_value(), detail::precondition_handler{});
             traits::destroy_object(impl_.storage);
             impl_.store_none_flag();
         }

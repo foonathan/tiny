@@ -113,6 +113,74 @@ namespace tiny
         return tiny_storage_detail::total_size<TinyTypes...>::value;
     }
 
+    /// A wrapper over the `BitView` that allows viewing the bits as the specified types.
+    template <typename BitView, class... TinyTypes>
+    class basic_tiny_storage_view
+    {
+        static constexpr auto bit_size_needed = total_bit_size<TinyTypes...>();
+        static_assert(bit_size_needed <= BitView::size(), "bit view overflow");
+
+        template <class Type, std::size_t Offset>
+        using proxy = decltype(make_tiny_proxy<Type>(
+            std::declval<BitView>().template subview<Offset, Offset + Type::bit_size()>()));
+
+        template <typename Tag>
+        using proxy_of = proxy<tiny_storage_detail::tiny_type<Tag, TinyTypes...>,
+                               tiny_storage_detail::offset_of<Tag, TinyTypes...>()>;
+        template <typename Tag>
+        proxy_of<Tag> get_impl() const noexcept
+        {
+            using type            = tiny_storage_detail::tiny_type<Tag, TinyTypes...>;
+            constexpr auto offset = tiny_storage_detail::offset_of<Tag, TinyTypes...>();
+
+            return make_tiny_proxy<type>(
+                view_.template subview<offset, offset + type::bit_size()>());
+        }
+
+    public:
+        //=== constructors ====//
+        /// Creates it from the given bit view.
+        basic_tiny_storage_view(BitView view) noexcept : view_(view) {}
+
+        //=== access ===//
+        /// Array access operator.
+        /// \returns The proxy for the tiny type `T`.
+        /// It is an error if there is more than one of those tiny types in the storage.
+        template <class T>
+        auto operator[](T) const noexcept -> proxy_of<T>
+        {
+            return get_impl<T>();
+        }
+
+        /// \returns The proxy of the tiny type at the specified index.
+        template <std::size_t I>
+        auto at() const noexcept -> proxy_of<std::integral_constant<std::size_t, I>>
+        {
+            static_assert(I < sizeof...(TinyTypes), "index out of bounds");
+            return get_impl<std::integral_constant<std::size_t, I>>();
+        }
+
+        /// Convenience access for a single tiny type.
+        /// \returns `at<0>()`.
+        /// \requires Only one tiny type must be stored.
+        template <std::size_t Dummy = sizeof...(TinyTypes)>
+        auto tiny() const noexcept -> proxy_of<std::integral_constant<std::size_t, Dummy - 1>>
+        {
+            static_assert(Dummy == 1, "only allowed for 1 tiny type");
+            return at<0>();
+        }
+
+        /// \returns A [tiny::bit_view]() of the views that are not used but there for padding.
+        auto spare_bits() const noexcept
+            -> decltype(std::declval<BitView>().template subview<bit_size_needed, last_bit>())
+        {
+            return view_.template subview<bit_size_needed, last_bit>();
+        }
+
+    private:
+        BitView view_;
+    };
+
     /// A type that has at least `Bits` bits and is thus able to store tiny types.
     template <std::size_t Bits>
     using tiny_storage_type
@@ -133,42 +201,11 @@ namespace tiny
     template <class TinyStoragePolicy, class... TinyTypes>
     class basic_tiny_storage : TinyStoragePolicy
     {
-        template <class Type, std::size_t Offset>
-        using proxy = decltype(
-            make_tiny_proxy<Type>(std::declval<TinyStoragePolicy&>()
-                                      .storage_view()
-                                      .template subview<Offset, Offset + Type::bit_size()>()));
-        template <class Type, std::size_t Offset>
-        using cproxy = decltype(
-            make_tiny_proxy<Type>(std::declval<const TinyStoragePolicy&>()
-                                      .storage_view()
-                                      .template subview<Offset, Offset + Type::bit_size()>()));
-
-        template <typename Tag>
-        using proxy_of = proxy<tiny_storage_detail::tiny_type<Tag, TinyTypes...>,
-                               tiny_storage_detail::offset_of<Tag, TinyTypes...>()>;
-        template <typename Tag>
-        using cproxy_of = cproxy<tiny_storage_detail::tiny_type<Tag, TinyTypes...>,
-                                 tiny_storage_detail::offset_of<Tag, TinyTypes...>()>;
-
-        template <typename Tag>
-        proxy_of<Tag> get_impl() noexcept
-        {
-            using type            = tiny_storage_detail::tiny_type<Tag, TinyTypes...>;
-            constexpr auto offset = tiny_storage_detail::offset_of<Tag, TinyTypes...>();
-
-            return make_tiny_proxy<type>(
-                this->storage_view().template subview<offset, offset + type::bit_size()>());
-        }
-        template <typename Tag>
-        cproxy_of<Tag> get_impl() const noexcept
-        {
-            using type            = tiny_storage_detail::tiny_type<Tag, TinyTypes...>;
-            constexpr auto offset = tiny_storage_detail::offset_of<Tag, TinyTypes...>();
-
-            return make_tiny_proxy<type>(
-                this->storage_view().template subview<offset, offset + type::bit_size()>());
-        }
+        using view
+            = basic_tiny_storage_view<decltype(std::declval<TinyStoragePolicy&>().storage_view()),
+                                      TinyTypes...>;
+        using cview = basic_tiny_storage_view<
+            decltype(std::declval<const TinyStoragePolicy&>().storage_view()), TinyTypes...>;
 
         struct default_ctor_tag
         {};
@@ -207,71 +244,57 @@ namespace tiny
         /// It is an error if there is more than one of those tiny types in the storage.
         /// \group array
         template <class T>
-        auto operator[](T) noexcept -> proxy_of<T>
+        auto operator[](T) noexcept -> decltype(std::declval<view>()[T{}])
         {
-            return get_impl<T>();
+            return view(this->storage_view())[T{}];
         }
         /// \group array
         template <class T>
-        auto operator[](T) const noexcept -> cproxy_of<T>
+        auto operator[](T) const noexcept -> decltype(std::declval<cview>()[T{}])
         {
-            return get_impl<T>();
+            return cview(this->storage_view())[T{}];
         }
 
         /// \returns The proxy of the tiny type at the specified index.
         /// \group at
         template <std::size_t I>
-        auto at() noexcept -> proxy_of<std::integral_constant<std::size_t, I>>
+        auto at() noexcept -> decltype(std::declval<view>().template at<I>())
         {
-            static_assert(I < sizeof...(TinyTypes), "index out of bounds");
-            return get_impl<std::integral_constant<std::size_t, I>>();
+            return view(this->storage_view()).template at<I>();
         }
         /// \group at
         template <std::size_t I>
-        auto at() const noexcept -> cproxy_of<std::integral_constant<std::size_t, I>>
+        auto at() const noexcept -> decltype(std::declval<cview>().template at<I>())
         {
-            static_assert(I < sizeof...(TinyTypes), "index out of bounds");
-            return get_impl<std::integral_constant<std::size_t, I>>();
+            return cview(this->storage_view()).template at<I>();
         }
 
         /// Convenience access for a single tiny type.
         /// \returns `at<0>()`.
         /// \requires Only one tiny type must be stored.
         /// \group tiny
-        template <std::size_t Dummy = sizeof...(TinyTypes)>
-        auto tiny() noexcept -> proxy_of<std::integral_constant<std::size_t, Dummy - 1>>
+        template <typename View = view>
+        auto tiny() noexcept -> decltype(std::declval<View>().tiny())
         {
-            static_assert(Dummy == 1, "only allowed for 1 tiny type");
-            return at<0>();
+            return view(this->storage_view()).tiny();
         }
         /// \group tiny
-        template <std::size_t Dummy = sizeof...(TinyTypes)>
-        auto tiny() const noexcept -> cproxy_of<std::integral_constant<std::size_t, Dummy - 1>>
+        template <typename View = cview>
+        auto tiny() const noexcept -> decltype(std::declval<View>().tiny())
         {
-            static_assert(Dummy == 1, "only allowed for 1 tiny type");
-            return at<0>();
+            return cview(this->storage_view()).tiny();
         }
 
         /// \returns A [tiny::bit_view]() of the views that are not used but there for padding.
         /// \group spare_bits
-        auto spare_bits() noexcept
-            -> decltype(std::declval<TinyStoragePolicy&>()
-                            .storage_view()
-                            .template subview<total_bit_size<TinyTypes...>(), last_bit>())
+        auto spare_bits() noexcept -> decltype(std::declval<view>().spare_bits())
         {
-            return storage_policy()
-                .storage_view()
-                .template subview<total_bit_size<TinyTypes...>(), last_bit>();
+            return view(storage_policy().storage_view()).spare_bits();
         }
         /// \group spare_bits
-        auto spare_bits() const noexcept
-            -> decltype(std::declval<const TinyStoragePolicy&>()
-                            .storage_view()
-                            .template subview<total_bit_size<TinyTypes...>(), last_bit>())
+        auto spare_bits() const noexcept -> decltype(std::declval<cview>().spare_bits())
         {
-            return storage_policy()
-                .storage_view()
-                .template subview<total_bit_size<TinyTypes...>(), last_bit>();
+            return cview(storage_policy().storage_view()).spare_bits();
         }
 
     protected:

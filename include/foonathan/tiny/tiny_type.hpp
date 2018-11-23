@@ -81,6 +81,11 @@ namespace tiny
     template <typename T>
     struct is_tiny_type : decltype(detail::test_tiny_type<T>(0))
     {};
+
+    /// A list of tiny types.
+    template <class... TinyTypes>
+    struct tiny_types
+    {};
 } // namespace tiny
 } // namespace foonathan
 

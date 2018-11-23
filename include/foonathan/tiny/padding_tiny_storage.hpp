@@ -31,7 +31,7 @@ namespace tiny
             template <typename... Args>
             void construct(Args&&... args)
             {
-                padded_ = Padded(static_cast<Args>(args)...);
+                padded_ = Padded(static_cast<Args&&>(args)...);
                 clear_bits(padding_of(padded_));
             }
 
@@ -70,7 +70,7 @@ namespace tiny
             template <typename... Args>
             void construct(Args&&... args)
             {
-                ::new (get_pointer()) Padded(static_cast<Args>(args)...);
+                ::new (get_pointer()) Padded(static_cast<Args&&>(args)...);
                 clear_bits(padding_of(get()));
             }
 
@@ -153,7 +153,7 @@ namespace tiny
                 padded_holder_for<Padded> obj;
 
                 template <typename... Args>
-                compressed_storage(Args&&... args) : obj(static_cast<Args>(args)...)
+                compressed_storage(Args&&... args) : obj(static_cast<Args&&>(args)...)
                 {}
 
                 Padded& object() noexcept
@@ -181,7 +181,7 @@ namespace tiny
                 tiny_storage_type<remaining_size> storage;
 
                 template <typename... Args>
-                uncompressed_storage(Args&&... args) : obj(static_cast<Args>(args)...)
+                uncompressed_storage(Args&&... args) : obj(static_cast<Args&&>(args)...)
                 {}
 
                 using storage_view = bit_view<tiny_storage_type<remaining_size>, 0, last_bit>;
@@ -232,7 +232,7 @@ namespace tiny
             template <typename... Args>
             void construct(Args&&... args)
             {
-                storage_.obj.construct(static_cast<Args>(args)...);
+                storage_.obj.construct(static_cast<Args&&>(args)...);
             }
 
             Padded& object() noexcept

@@ -61,6 +61,7 @@ set(tests
     padding_traits.cpp
     poiner_variant_impl.cpp
     tombstone_traits.cpp
+    tagged_union_impl.cpp
     tiny_types.cpp
     tiny_storage.cpp)
 

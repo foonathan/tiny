@@ -1,5 +1,6 @@
 # foonathan/tiny
 
+![Project Status](https://img.shields.io/endpoint?url=https%3A%2F%2Fwww.jonathanmueller.dev%2Fproject%2Ftiny%2Findex.json)
 [![Build Status](https://dev.azure.com/foonathan/tiny/_apis/build/status/foonathan.tiny)](https://dev.azure.com/foonathan/tiny/_build/latest?definitionId=3)
 
 > Note: This project is currently WIP, no guarantees are made until an 0.1 release.
